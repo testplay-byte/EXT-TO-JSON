@@ -377,7 +377,12 @@ function assembleJson(input: AssembleInput): ExtensionJson {
     source: {
       baseUrl,
       lang,
-      headers: { "User-Agent": defaultUserAgent() },
+      headers: {
+        "User-Agent": defaultUserAgent(),
+        ...(baseUrl
+          ? { Referer: baseUrl.replace(/\/$/, "") + "/" }
+          : {}),
+      },
       rateLimitPerSecond: 0,
     },
     browse: { popular, latest, search },

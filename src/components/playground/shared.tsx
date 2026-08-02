@@ -22,6 +22,7 @@ export type FetchInfo = {
   status: number;
   url: string;
   error?: string;
+  blocked?: boolean;
 };
 
 /** Rose alert for a failed request. Renders nothing when fetch.ok is true. */
@@ -33,16 +34,30 @@ export function FetchAlert({
   title?: string;
 }) {
   if (f.ok) return null;
+  const isBlocked = f.blocked || f.status === 403;
+  const is404 = f.status === 404;
+  const alertTitle = isBlocked
+    ? "Site blocked the request"
+    : is404
+      ? "Page not found (404)"
+      : title;
   return (
     <Alert
       variant="destructive"
       className="rounded-2xl border-[var(--accent-danger)]/40 bg-[var(--accent-danger-soft)] text-[var(--accent-danger)] [&>svg]:text-[var(--accent-danger)]"
     >
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>{title}</AlertTitle>
+      <AlertTitle>{alertTitle}</AlertTitle>
       <AlertDescription className="text-[var(--accent-danger)]/90">
         <div className="break-words">{f.error || `HTTP ${f.status}`}</div>
         <div className="mt-1 break-all text-[11px] opacity-80">URL: {f.url}</div>
+        {isBlocked && (
+          <div className="mt-2 text-[11px] opacity-90">
+            💡 Try: open the extension Settings (top-right) and pick a different
+            domain, or visit the site in your browser first to pass any
+            Cloudflare challenge.
+          </div>
+        )}
       </AlertDescription>
     </Alert>
   );

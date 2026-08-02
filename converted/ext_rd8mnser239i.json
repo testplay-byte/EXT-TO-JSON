@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "converter": {
     "version": "1.0.0",
-    "convertedAt": "2026-08-02T17:14:11.265Z",
-    "durationMs": 4996,
+    "convertedAt": "2026-08-02T17:30:39.568Z",
+    "durationMs": 5022,
     "toolchain": {
       "apktool": "2.9.3",
       "jadx": "1.4.7",
@@ -125,7 +125,8 @@
     "baseUrl": "https://anikototv.to",
     "lang": "en",
     "headers": {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Referer": "https://anikototv.to/"
     },
     "rateLimitPerSecond": 0
   },
@@ -372,8 +373,8 @@
     ]
   },
   "rawAnalysis": {
-    "decompiledPath": "work/job-1785690846269/jadx-out",
-    "sourceClassFile": "work/job-1785690846269/jadx-out/sources/defpackage/q0.java",
+    "decompiledPath": "work/job-1785691834547/jadx-out",
+    "sourceClassFile": "work/job-1785691834547/jadx-out/sources/defpackage/q0.java",
     "candidateClasses": [
       "q0"
     ],
