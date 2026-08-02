@@ -26,7 +26,7 @@
   --color-popover-foreground: var(--text-primary);
 
   --color-primary: var(--text-primary);
-  --color-primary-foreground: #ffffff;
+  --color-primary-foreground: var(--primary-fg);
   --color-secondary: var(--surface-alt);
   --color-secondary-foreground: var(--text-primary);
   --color-muted: var(--surface-alt);
@@ -72,6 +72,9 @@
   --text-secondary: #8a8784;
   --text-tertiary: #b3b0ab;
 
+  /* Primary button foreground: white text on the dark primary bg (light mode). */
+  --primary-fg: #ffffff;
+
   --accent-indigo: #6366f1;
   --accent-indigo-soft: #eef0fe;
   --accent-secondary: #8b5cf6;
@@ -102,6 +105,10 @@
   --text-primary: #ede9e3;
   --text-secondary: #a8a6a2;
   --text-tertiary: #7a7874;
+
+  /* Primary button: inverted look in dark mode — light bg, dark text.
+     This keeps primary buttons visible & premium without adding color. */
+  --primary-fg: #18181a;
 
   --accent-indigo: #818cf8;
   --accent-indigo-soft: #2a2d44;

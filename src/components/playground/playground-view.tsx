@@ -363,7 +363,7 @@ export default function PlaygroundView({
 function Header() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-indigo)] to-[var(--accent-teal)] text-white shadow-lg shadow-[var(--accent-teal)]/25">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--text-primary)] text-[var(--canvas)] shadow-md">
         <FlaskConical className="h-5 w-5" />
       </div>
       <div>

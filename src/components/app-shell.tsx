@@ -53,9 +53,9 @@ export default function AppShell() {
         collapsed ? "w-[68px]" : "w-[240px]",
       )}
     >
-      {/* Brand + collapse toggle */}
+      {/* Brand */}
       <div className="flex items-center gap-2.5 px-3 h-16 shrink-0">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-indigo)] to-[var(--accent-teal)] text-white shadow-lg shadow-[var(--accent-teal)]/25">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--text-primary)] text-[var(--canvas)] shadow-md">
           <Boxes className="h-5 w-5" />
         </div>
         {!collapsed && (
@@ -66,19 +66,6 @@ export default function AppShell() {
             </p>
           </div>
         )}
-        {/* Collapse toggle — proper bordered icon button */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-[var(--surface)] text-muted-foreground transition-all hover:bg-[var(--surface-alt)] hover:text-foreground hover:border-[var(--border-strong)] active:scale-95"
-        >
-          {collapsed ? (
-            <PanelLeft className="h-[18px] w-[18px]" />
-          ) : (
-            <PanelLeftClose className="h-[18px] w-[18px]" />
-          )}
-        </button>
       </div>
 
       {/* Nav */}
@@ -109,14 +96,33 @@ export default function AppShell() {
         })}
       </nav>
 
-      {/* Sidebar footer — version badge */}
-      <div className="px-3 pb-3">
+      {/* Sidebar footer — version badge + collapse toggle at the very bottom */}
+      <div className="px-3 pb-3 space-y-2">
         {!collapsed && (
           <div className="rounded-xl bg-[var(--surface-alt)] p-3 text-[11px] text-muted-foreground">
             <p className="font-semibold text-foreground mb-0.5">v1.0.0</p>
             <p>Decompiles via apktool + jadx. Pure JSON output.</p>
           </div>
         )}
+        {/* Collapse toggle — proper bordered button at the very bottom */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "hidden lg:flex w-full items-center gap-2.5 rounded-xl border border-border bg-[var(--surface)] px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-[var(--surface-alt)] hover:text-foreground hover:border-[var(--border-strong)] active:scale-[0.98]",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeft className="h-[18px] w-[18px] shrink-0" />
+          ) : (
+            <>
+              <PanelLeftClose className="h-[18px] w-[18px] shrink-0" />
+              <span>Collapse</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

@@ -8,13 +8,12 @@ import {
   FileJson,
   Loader2,
   Trash2,
-  Eye,
   Package,
   CheckCircle2,
   AlertCircle,
   Cpu,
   FileUp,
-  X,
+  ChevronRight,
 } from "lucide-react";
 import {
   convertApk,
@@ -38,14 +37,9 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { HealthBadge, CheckMark } from "@/components/shared/health-badge";
 import { JsonViewer } from "@/components/shared/json-viewer";
+import ExtensionDetailsView from "./extension-details-view";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +63,7 @@ export default function ConverterView({
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<ConversionJob | null>(null);
   const [result, setResult] = useState<ExtensionJson | null>(null);
+  const [selectedExtId, setSelectedExtId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -154,6 +149,20 @@ export default function ConverterView({
   function handleJsonFile(files: FileList | null) {
     if (!files || !files[0]) return;
     importMut.mutate(files[0]);
+  }
+
+  // If an extension is selected, show its details page instead of the converter.
+  if (selectedExtId) {
+    return (
+      <ExtensionDetailsView
+        extensionId={selectedExtId}
+        onBack={() => setSelectedExtId(null)}
+        onTestInPlayground={(id) => {
+          setSelectedExtId(null);
+          onOpenInPlayground?.(id);
+        }}
+      />
+    );
   }
 
   return (
@@ -351,7 +360,7 @@ export default function ConverterView({
       {/* Library */}
       <ExtensionsLibrary
         extensions={extsData?.extensions ?? []}
-        onOpenInPlayground={onOpenInPlayground}
+        onOpenDetails={(id) => setSelectedExtId(id)}
       />
     </div>
   );
@@ -500,31 +509,21 @@ function CapabilityChip({ name, on }: { name: string; on: boolean }) {
 
 function ExtensionsLibrary({
   extensions,
-  onOpenInPlayground,
+  onOpenDetails,
 }: {
   extensions: ExtensionSummary[];
-  onOpenInPlayground?: (id: string) => void;
+  onOpenDetails: (id: string) => void;
 }) {
   const qc = useQueryClient();
-  const [viewing, setViewing] = useState<string | null>(null);
-  const [viewData, setViewData] = useState<ExtensionJson | null>(null);
 
-  async function open(id: string) {
-    try {
-      setViewData(await getExtension(id));
-      setViewing(id);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  async function remove(id: string, name: string) {
+  async function remove(id: string, name: string, e: React.MouseEvent) {
+    e.stopPropagation();
     try {
       await deleteExtension(id);
       qc.invalidateQueries({ queryKey: ["extensions"] });
       toast.success(`Removed "${name}"`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -538,6 +537,9 @@ function ExtensionsLibrary({
             {extensions.length}
           </Badge>
         </h2>
+        <p className="text-xs text-muted-foreground hidden sm:block">
+          Click an extension to see its full details
+        </p>
       </div>
 
       {extensions.length === 0 ? (
@@ -548,12 +550,16 @@ function ExtensionsLibrary({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
           {extensions.map((ext) => (
-            <Card key={ext.id} className="lift-on-hover">
+            <Card
+              key={ext.id}
+              className="lift-on-hover cursor-pointer group relative"
+              onClick={() => onOpenDetails(ext.id)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{ext.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono truncate">
+                    <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
                       {ext.lang} · {ext.sourceType}
                     </p>
                   </div>
@@ -562,53 +568,26 @@ function ExtensionsLibrary({
                 <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
                   {ext.healthSummary}
                 </p>
-                <div className="flex items-center gap-1.5 mt-3">
-                  <Button size="sm" variant="secondary" className="h-8 flex-1" onClick={() => open(ext.id)}>
-                    <Eye className="h-3.5 w-3.5" /> View
-                  </Button>
-                  {onOpenInPlayground && (
-                    <Button
-                      size="sm"
-                      className="h-8 flex-1"
-                      onClick={() => onOpenInPlayground(ext.id)}
-                    >
-                      Test
-                    </Button>
-                  )}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-muted-foreground hover:text-[var(--accent-danger)]"
-                    onClick={() => remove(ext.id, ext.name)}
+                {/* Footer row: open affordance + delete */}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                    Open details
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                  <button
+                    onClick={(e) => remove(ext.id, ext.name, e)}
+                    aria-label={`Delete ${ext.name}`}
+                    title="Delete extension"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--accent-danger-soft)] hover:text-[var(--accent-danger)]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  </button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-
-      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileJson className="h-5 w-5 text-[var(--accent-amber)]" />
-              {viewData?.meta.name ?? "Extension"}
-              {viewData && (
-                <HealthBadge
-                  status={viewData.health.status}
-                  score={viewData.health.score}
-                />
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="overflow-y-auto -mx-6 px-6 pb-2">
-            {viewData && <JsonViewer data={viewData} maxHeight={520} />}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

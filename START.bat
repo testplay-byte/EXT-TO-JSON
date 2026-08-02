@@ -225,7 +225,7 @@ echo   [3/6] Checking for Java...
 echo  ------------------------------------------------------------
 where java >nul 2>nul
 if errorlevel 1 goto :java_install
-for /f "delims=" %%v in ('java -version 2^>&1 2^>^&1') do (
+for /f "delims=" %%v in ('java -version 2^>^&1') do (
     if not defined JAVER set "JAVER=%%v"
 )
 echo  [OK] !JAVER!
@@ -435,7 +435,10 @@ set "NEED_JADX=0"
 if not exist "%APKTOOL_FILE%" set "NEED_APKTOOL=1"
 if not exist "%JADX_BIN%" if not exist "%JADX_BAT%" set "NEED_JADX=1"
 
-if "!NEED_APKTOOL!"=="0" if "!NEED_JADX!"=="0" echo  [OK] tools\apktool.jar and tools\bin\jadx already present. & goto :tools_done
+if "!NEED_APKTOOL!"=="0" if "!NEED_JADX!"=="0" (
+    echo  [OK] tools\apktool.jar and tools\bin\jadx already present.
+    goto :tools_done
+)
 
 if not exist "tools" mkdir tools
 
