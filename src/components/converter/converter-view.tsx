@@ -187,7 +187,7 @@ export default function ConverterView({
         <Card
           className={cn(
             "lift-on-hover relative overflow-hidden",
-            dragOver && "ring-2 ring-[var(--accent-indigo)]",
+            dragOver && "ring-2 ring-[var(--accent-teal)]",
           )}
           onDragOver={(e) => {
             e.preventDefault();
@@ -202,7 +202,7 @@ export default function ConverterView({
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileUp className="h-5 w-5 text-[var(--accent-indigo)]" />
+              <FileUp className="h-5 w-5 text-[var(--accent-teal)]" />
               Upload APK
             </CardTitle>
             <CardDescription>
@@ -212,11 +212,11 @@ export default function ConverterView({
           <CardContent>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-[var(--surface-alt)] py-10 transition-colors hover:border-[var(--accent-indigo)]/50 hover:bg-[var(--accent-indigo-soft)]/40"
+              className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-[var(--surface-alt)] py-10 transition-colors hover:border-[var(--accent-teal)]/50 hover:bg-[var(--accent-teal-soft)]/40"
             >
               <motion.div
                 animate={{ y: dragOver ? -4 : 0 }}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent-indigo-soft)] text-[var(--accent-indigo)]"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent-teal-soft)] text-[var(--accent-teal)]"
               >
                 <Upload className="h-6 w-6" />
               </motion.div>
@@ -243,7 +243,7 @@ export default function ConverterView({
         <Card className="lift-on-hover">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileJson className="h-5 w-5 text-[var(--accent-secondary)]" />
+              <FileJson className="h-5 w-5 text-[var(--accent-amber)]" />
               Import JSON
             </CardTitle>
             <CardDescription>
@@ -303,7 +303,7 @@ export default function ConverterView({
                     ) : job.status === "done" ? (
                       <CheckCircle2 className="h-5 w-5 text-[var(--accent-teal)]" />
                     ) : (
-                      <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-indigo)]" />
+                      <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-teal)]" />
                     )}
                     Converting {job.apkFileName}
                   </span>
@@ -373,7 +373,7 @@ function HealthReport({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-[var(--accent-indigo)]" />
+                <Package className="h-5 w-5 text-muted-foreground" />
                 {json.meta.name}
               </CardTitle>
               <CardDescription className="mt-1 font-mono text-xs">
@@ -481,14 +481,14 @@ function CapabilityChip({ name, on }: { name: string; on: boolean }) {
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
         on
-          ? "bg-[var(--accent-indigo-soft)] text-[var(--accent-indigo)]"
+          ? "bg-[var(--accent-teal-soft)] text-[var(--accent-teal)]"
           : "bg-[var(--surface-alt)] text-muted-foreground",
       )}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          on ? "bg-[var(--accent-indigo)]" : "bg-muted-foreground/40",
+          on ? "bg-[var(--accent-teal)]" : "bg-muted-foreground/40",
         )}
       />
       {label}
@@ -594,7 +594,7 @@ function ExtensionsLibrary({
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileJson className="h-5 w-5 text-[var(--accent-indigo)]" />
+              <FileJson className="h-5 w-5 text-[var(--accent-amber)]" />
               {viewData?.meta.name ?? "Extension"}
               {viewData && (
                 <HealthBadge

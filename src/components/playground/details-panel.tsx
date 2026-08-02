@@ -299,7 +299,7 @@ export function DetailsPanel({
                       }
                     }}
                     disabled={episodesQ.isLoading}
-                    className="rounded-xl bg-[var(--accent-indigo)] text-white hover:bg-[var(--accent-indigo)]/90 h-9"
+                    className="rounded-xl bg-[var(--text-primary)] text-white hover:bg-[var(--text-primary)]/90 h-9"
                   >
                     {episodesQ.isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -11,7 +11,6 @@ import {
   PanelLeft,
   Menu,
   Github,
-  Heart,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,19 +53,32 @@ export default function AppShell() {
         collapsed ? "w-[68px]" : "w-[240px]",
       )}
     >
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 h-16 shrink-0">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-indigo)] to-[var(--accent-secondary)] text-white shadow-lg shadow-[var(--accent-indigo)]/20">
+      {/* Brand + collapse toggle */}
+      <div className="flex items-center gap-2.5 px-3 h-16 shrink-0">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-indigo)] to-[var(--accent-teal)] text-white shadow-lg shadow-[var(--accent-teal)]/25">
           <Boxes className="h-5 w-5" />
         </div>
         {!collapsed && (
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-bold leading-tight truncate">EXT→JSON</p>
             <p className="text-[10px] text-muted-foreground leading-tight">
               anime extension toolkit
             </p>
           </div>
         )}
+        {/* Collapse toggle — proper bordered icon button */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-[var(--surface)] text-muted-foreground transition-all hover:bg-[var(--surface-alt)] hover:text-foreground hover:border-[var(--border-strong)] active:scale-95"
+        >
+          {collapsed ? (
+            <PanelLeft className="h-[18px] w-[18px]" />
+          ) : (
+            <PanelLeftClose className="h-[18px] w-[18px]" />
+          )}
+        </button>
       </div>
 
       {/* Nav */}
@@ -97,26 +109,14 @@ export default function AppShell() {
         })}
       </nav>
 
-      {/* Footer of sidebar */}
-      <div className="px-3 pb-3 space-y-1">
+      {/* Sidebar footer — version badge */}
+      <div className="px-3 pb-3">
         {!collapsed && (
           <div className="rounded-xl bg-[var(--surface-alt)] p-3 text-[11px] text-muted-foreground">
             <p className="font-semibold text-foreground mb-0.5">v1.0.0</p>
             <p>Decompiles via apktool + jadx. Pure JSON output.</p>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="hidden lg:flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-[var(--surface-alt)] hover:text-foreground transition-colors"
-          title={collapsed ? "Expand" : "Collapse"}
-        >
-          {collapsed ? (
-            <PanelLeft className="h-[18px] w-[18px]" />
-          ) : (
-            <PanelLeftClose className="h-[18px] w-[18px]" />
-          )}
-          {!collapsed && <span>Collapse</span>}
-        </button>
       </div>
     </div>
   );
@@ -231,20 +231,6 @@ export default function AppShell() {
                 </motion.div>
               </AnimatePresence>
             </div>
-
-            {/* Sticky footer */}
-            <footer className="mt-auto border-t border-border bg-[var(--surface)] px-4 lg:px-6 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <p>
-                  EXT→JSON · converts Aniyomi/Animiru anime extensions to portable
-                  JSON
-                </p>
-                <p className="flex items-center gap-1.5">
-                  Built with <Heart className="h-3 w-3 text-[var(--accent-danger)] fill-current" /> using
-                  apktool + jadx
-                </p>
-              </div>
-            </footer>
           </main>
         </div>
       </div>

@@ -93,7 +93,7 @@ export function CapabilitiesChips({ capabilities }: { capabilities: Capabilities
           className={cn(
             "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
             c.on
-              ? "bg-[var(--accent-indigo-soft)] text-[var(--accent-indigo)]"
+              ? "bg-[var(--accent-teal-soft)] text-[var(--accent-teal)]"
               : "bg-[var(--surface-alt)] text-muted-foreground line-through opacity-60",
           )}
         >
@@ -146,7 +146,7 @@ export function CardSkeleton() {
 export function LoadingPill({ label }: { label: string }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-alt)] px-3 py-1.5 text-xs text-muted-foreground">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-indigo)]" />
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-teal)]" />
       {label}
     </div>
   );

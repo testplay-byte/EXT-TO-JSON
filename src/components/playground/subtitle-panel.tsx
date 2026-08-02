@@ -89,7 +89,7 @@ export function SubtitlePanel({
       className="rounded-3xl border border-border bg-[var(--surface)] p-4 shadow-[var(--shadow)] space-y-4"
     >
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--accent-secondary-soft)] text-[var(--accent-secondary)]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--accent-amber-soft)] text-[var(--accent-amber)]">
           <Subtitles className="h-4 w-4" />
         </div>
         <div>

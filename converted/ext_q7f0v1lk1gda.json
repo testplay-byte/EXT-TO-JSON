@@ -1,0 +1,427 @@
+{
+  "schemaVersion": "1.0.0",
+  "converter": {
+    "version": "1.0.0",
+    "convertedAt": "2026-08-02T14:20:59.035Z",
+    "durationMs": 8428,
+    "toolchain": {
+      "apktool": "2.9.3",
+      "jadx": "1.4.7",
+      "java": "openjdk version 21.0.11 2026-04-21"
+    },
+    "inputFile": "aniyomi-en.anikoto-v14.1.apk",
+    "inputSha256": "d1a7564cd8091a30fb0273aa9683aeedc450299cf8c0fe171132bec279a0b920"
+  },
+  "meta": {
+    "name": "Dub",
+    "lang": "Dub",
+    "baseUrl": "Dub",
+    "versionId": 0,
+    "isNsfw": false,
+    "packageName": "eu.kanade.tachiyomi.animeextension.en.anikoto",
+    "apkVersionCode": 0,
+    "apkVersionName": "",
+    "sourceClassName": "q0",
+    "sourceType": "ParsedAnimeHttpSource"
+  },
+  "health": {
+    "score": 92,
+    "status": "warning",
+    "summary": "Conversion incomplete — 92% complete. 1 warning(s), 0 error(s).",
+    "checks": [
+      {
+        "id": "manifest",
+        "label": "AndroidManifest parsed",
+        "status": "pass",
+        "detail": "Package name, version code/name and meta-data extracted."
+      },
+      {
+        "id": "source-class",
+        "label": "Source class located",
+        "status": "pass",
+        "detail": "q0 extends ParsedAnimeHttpSource."
+      },
+      {
+        "id": "base-url",
+        "label": "Base URL extracted",
+        "status": "pass",
+        "detail": "Dub"
+      },
+      {
+        "id": "language",
+        "label": "Language extracted",
+        "status": "pass",
+        "detail": "Dub"
+      },
+      {
+        "id": "name",
+        "label": "Display name extracted",
+        "status": "pass",
+        "detail": "Dub"
+      },
+      {
+        "id": "method-overrides",
+        "label": "Method overrides detected",
+        "status": "pass",
+        "detail": "27 overridden methods detected."
+      },
+      {
+        "id": "browse-popular",
+        "label": "Popular endpoint",
+        "status": "pass",
+        "detail": "popularAnimeRequest + popularAnimeSelector present."
+      },
+      {
+        "id": "browse-search",
+        "label": "Search endpoint",
+        "status": "pass",
+        "detail": "searchAnimeRequest present."
+      },
+      {
+        "id": "details",
+        "label": "Anime details parsing",
+        "status": "fail",
+        "detail": "Details parsing missing."
+      },
+      {
+        "id": "episodes",
+        "label": "Episode list parsing",
+        "status": "pass",
+        "detail": "episodeListParse present."
+      },
+      {
+        "id": "videos",
+        "label": "Video extraction",
+        "status": "pass",
+        "detail": "videoListParse / videoUrlParse present."
+      },
+      {
+        "id": "servers",
+        "label": "Video servers detected",
+        "status": "pass",
+        "detail": "2 server(s): gogo, vidstream"
+      },
+      {
+        "id": "filters",
+        "label": "Filter list",
+        "status": "skip",
+        "detail": "No filters."
+      }
+    ],
+    "warnings": [
+      "Anime details parsing: Details parsing missing."
+    ],
+    "errors": []
+  },
+  "capabilities": {
+    "sourceKind": "anime",
+    "supportsLatest": true,
+    "supportsSearch": true,
+    "supportsFilters": false,
+    "supportsEpisodes": true,
+    "supportsVideos": true,
+    "supportsSubtitles": true,
+    "supportsAudioTracks": false
+  },
+  "source": {
+    "baseUrl": "Dub",
+    "lang": "Dub",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    },
+    "rateLimitPerSecond": 0
+  },
+  "browse": {
+    "popular": {
+      "method": "GET",
+      "url": "page",
+      "headers": {},
+      "parse": {
+        "itemSelector": "div.ani.items > div.item",
+        "title": "a.name",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": true
+    },
+    "latest": {
+      "method": "GET",
+      "url": "page",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    },
+    "search": {
+      "method": "GET",
+      "url": "page",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    }
+  },
+  "filters": [],
+  "details": {
+    "title": "",
+    "description": "",
+    "thumbnail": "",
+    "author": "",
+    "artist": "",
+    "genre": "",
+    "status": "",
+    "statusMapping": {
+      "ongoing": [
+        "ongoing",
+        "ongoing?",
+        "emission",
+        "en cours"
+      ],
+      "completed": [
+        "completed",
+        "finish",
+        "termine"
+      ],
+      "canceled": [
+        "canceled",
+        "cancelled"
+      ],
+      "onHiatus": [
+        "hiatus",
+        "on hold"
+      ]
+    },
+    "extras": {}
+  },
+  "episodes": {
+    "method": "GET",
+    "url": "",
+    "headers": {},
+    "parse": {
+      "itemSelector": "div.episodes ul > li > a",
+      "number": "a",
+      "name": "",
+      "url": "a",
+      "scanlator": "",
+      "date": "",
+      "numberExtraction": "regex",
+      "numberRegex": "(\\d+(?:\\.\\d+)?)"
+    }
+  },
+  "videos": {
+    "method": "GET",
+    "url": "&{substringBefore$default2);\n        newBuilder.add(}/ajax/server/list?servers={substringBefore$default, build, (CacheControl) null, 4, (Object) null);}",
+    "headers": {},
+    "servers": [
+      {
+        "name": "Gogo",
+        "selector": "iframe[src*=\"gogo\"], a[data-server*=\"gogo\"], li[data-video*=\"gogo\"]",
+        "extractor": "gogo",
+        "qualities": [],
+        "note": "Detected by name in source string literals."
+      },
+      {
+        "name": "Vidstream",
+        "selector": "iframe[src*=\"vidstream\"], a[data-server*=\"vidstream\"], li[data-video*=\"vidstream\"]",
+        "extractor": "vidstream",
+        "qualities": [],
+        "note": "Detected by name in source string literals."
+      }
+    ],
+    "resolutions": [],
+    "formats": [
+      "mp4",
+      "m3u8"
+    ],
+    "extractorStrategy": "registry",
+    "detectedExtractors": [
+      "gogo",
+      "vidstream"
+    ]
+  },
+  "subtitles": {
+    "supported": true,
+    "source": "none",
+    "formats": [],
+    "note": "No subtitle references detected."
+  },
+  "audio": {
+    "supported": false,
+    "source": "none",
+    "tracks": [],
+    "note": "No multi-audio references detected."
+  },
+  "rawAnalysis": {
+    "decompiledPath": "work/job-1785680450607/jadx-out",
+    "sourceClassFile": "work/job-1785680450607/jadx-out/sources/defpackage/q0.java",
+    "candidateClasses": [
+      "q0"
+    ],
+    "methodOverrides": [
+      "popularAnimeRequest",
+      "popularAnimeParse",
+      "popularAnimeSelector",
+      "popularAnimeFromElement",
+      "popularAnimeNextPageSelector",
+      "latestUpdatesRequest",
+      "latestUpdatesParse",
+      "latestUpdatesSelector",
+      "latestUpdatesFromElement",
+      "latestUpdatesNextPageSelector",
+      "searchAnimeRequest",
+      "searchAnimeParse",
+      "searchAnimeSelector",
+      "searchAnimeFromElement",
+      "searchAnimeNextPageSelector",
+      "animeDetailsParse",
+      "episodeListRequest",
+      "episodeListParse",
+      "episodeListSelector",
+      "episodeFromElement",
+      "videoListRequest",
+      "videoListParse",
+      "videoListSelector",
+      "videoFromElement",
+      "videoUrlParse",
+      "getFilterList",
+      "getVideoList"
+    ],
+    "stringLiterals": [
+      {
+        "method": "popularAnimeRequest",
+        "values": [
+          "most-viewed",
+          "",
+          "page"
+        ]
+      },
+      {
+        "method": "popularAnimeSelector",
+        "values": [
+          "div.ani.items > div.item"
+        ]
+      },
+      {
+        "method": "popularAnimeFromElement",
+        "values": [
+          "a.name",
+          "href",
+          "?",
+          "",
+          "data-src",
+          "src"
+        ]
+      },
+      {
+        "method": "popularAnimeNextPageSelector",
+        "values": [
+          "nav > ul.pagination > li.active ~ li"
+        ]
+      },
+      {
+        "method": "latestUpdatesRequest",
+        "values": [
+          "latest-updated",
+          "",
+          "page"
+        ]
+      },
+      {
+        "method": "searchAnimeRequest",
+        "values": [
+          "",
+          "filter",
+          "keyword",
+          "page",
+          "vrf",
+          "genre",
+          "season",
+          "year",
+          "term_type",
+          "status",
+          "language",
+          "rating",
+          "sort"
+        ]
+      },
+      {
+        "method": "animeDetailsParse",
+        "values": [
+          "h1.title, h2.title",
+          "[data-id]",
+          "data-id",
+          "[data-tip]",
+          "data-tip",
+          "#",
+          "div:contains(Genres) > span > a",
+          "div:contains(Studios) > span > a",
+          "div:contains(Status) > span",
+          "data-src",
+          "src"
+        ]
+      },
+      {
+        "method": "episodeListParse",
+        "values": [
+          "Referer",
+          "AnikotoTheme",
+          "Failed to parse episodes: "
+        ]
+      },
+      {
+        "method": "episodeListSelector",
+        "values": [
+          "div.episodes ul > li > a"
+        ]
+      },
+      {
+        "method": "videoListRequest",
+        "values": [
+          "&",
+          "epurl=",
+          "&",
+          "Accept",
+          "application/json, text/javascript, */*; q=0.01",
+          "Referer",
+          "X-Requested-With",
+          "XMLHttpRequest",
+          "/ajax/server/list?servers="
+        ]
+      }
+    ],
+    "manifestDump": {
+      "packageName": "eu.kanade.tachiyomi.animeextension.en.anikoto",
+      "versionCode": 0,
+      "versionName": "",
+      "metaDataKeys": [
+        "tachiyomi.animeextension.class",
+        "tachiyomi.animeextension.nsfw"
+      ]
+    },
+    "resourceStrings": {},
+    "analyzerNotes": [
+      "Scanned 125 .java files from jadx output.",
+      "Found 1 candidate source class(es): q0 (ParsedAnimeHttpSource, score=33)",
+      "Manifest hint '.Anikoto' did not match any candidate; using top-scored q0.",
+      "Detected 27 overridden methods.",
+      "Extracted 3 selectors, 5 request URLs, 0 filters, 2 extractors."
+    ]
+  }
+}

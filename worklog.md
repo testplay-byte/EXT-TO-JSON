@@ -169,3 +169,28 @@ Work Log:
 Stage Summary:
 - PROJECT COMPLETE & VERIFIED. Repo live at https://github.com/testplay-byte/EXT-TO-JSON.
 - All 12 todos done. App is interactive and runnable in the preview panel.
+
+---
+Task ID: 13
+Agent: main (orchestrator)
+Task: Single-file reliable .bat launcher + UI color rebalance + remove footer + redesign collapse button.
+
+Work Log:
+- Rewrote START.bat to be fully self-contained and reliable:
+  - Single file placed in any folder; clones repo into sibling EXT-TO-JSON/ subfolder.
+  - Auto-installs Git / Node.js / Java via winget (with manual-download fallback + re-launch guidance).
+  - Robust clone (stash + force-reset fallback), verified downloads (file-size check >1MB for apktool.jar).
+  - Fixed batch reliability bug: removed all goto/labels inside parenthesized if-blocks (unreachable in batch); replaced with flag-based pattern (APKTOOL_OK / JADX_OK).
+  - Enforced CRLF line endings + pure ASCII.
+- Color rebalance (reduce blue/purple overuse, add green/yellow/red purposefully):
+  - globals.css: --color-primary changed from indigo to text-primary (dark) -> all default buttons now dark/premium, removing indigo from every button.
+  - app-shell: brand gradient indigo→violet changed to indigo→teal (introduces green).
+  - converter-view: upload card accent indigo→teal (green=go); import JSON accent violet→amber (yellow); capability chips on=teal; job spinner teal; result Package icon neutralized to muted-foreground; dialog icon amber.
+  - playground: brand gradient indigo→teal; videos header icon violet→teal; subtitles header icon violet→amber; capabilities chips indigo→teal; loading pill dot teal; load-episodes button indigo→dark primary.
+  - Kept indigo only for: active sidebar nav, focus rings, selection states, "ongoing" status badge — functional, balanced use.
+- Removed the bottom footer section entirely (the "EXT→JSON · converts..." / "Built with..." block). Verified 0 footer elements via Agent Browser.
+- Redesigned collapse button: moved from sidebar bottom (ghost text button) to sidebar header as a proper bordered icon button (h-8 w-8 rounded-lg border bg-surface hover:bg-surface-alt hover:border-strong active:scale-95), with aria-label + title tooltip. Icon toggles PanelLeftClose/PanelLeft. Verified toggle: width 240px↔68px.
+- Agent Browser verification: footer gone (0 elements), collapse toggles correctly, light+dark mode render, playground renders with rebalanced colors, no runtime errors, lint clean.
+
+Stage Summary:
+- All 4 user requests done + verified + pushed to GitHub.

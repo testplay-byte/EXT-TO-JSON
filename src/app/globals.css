@@ -25,7 +25,7 @@
   --color-popover: var(--surface);
   --color-popover-foreground: var(--text-primary);
 
-  --color-primary: var(--accent-indigo);
+  --color-primary: var(--text-primary);
   --color-primary-foreground: #ffffff;
   --color-secondary: var(--surface-alt);
   --color-secondary-foreground: var(--text-primary);

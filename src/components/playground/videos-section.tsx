@@ -108,7 +108,7 @@ export function VideosSection({
     <Card className="rounded-3xl border-border bg-[var(--surface)] shadow-[var(--shadow)] gap-4">
       <CardHeader className="pb-0">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-secondary-soft)] text-[var(--accent-secondary)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-teal-soft)] text-[var(--accent-teal)]">
             <Clapperboard className="h-4 w-4" />
           </div>
           <div>
