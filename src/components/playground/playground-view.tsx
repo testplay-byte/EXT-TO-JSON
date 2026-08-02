@@ -259,9 +259,11 @@ export default function PlaygroundView({
           {extSummary && (
             <div className="space-y-2">
               <CapabilitiesChips capabilities={extSummary.capabilities} />
-              <p className="break-all text-[11px] text-muted-foreground">
-                {extSummary.baseUrl}
-              </p>
+              {extJson?.meta?.baseUrl && /^https?:\/\//.test(extJson.meta.baseUrl) && (
+                <p className="break-all text-[11px] text-muted-foreground font-mono">
+                  {extJson.meta.baseUrl}
+                </p>
+              )}
               {extSummary.healthSummary && (
                 <p className="text-[11px] italic text-muted-foreground">
                   {extSummary.healthSummary}

@@ -29,6 +29,12 @@ import type {
   SourceType,
 } from "./types";
 import { analyzeSettings, type SettingsAnalysis } from "./settings";
+import {
+  findEntryClass,
+  parseSuperCall,
+  parsePreferenceScreen,
+  buildUrlFromBuilderPattern,
+} from "./decompiled";
 
 const BASE_CLASSES: Record<string, SourceType> = {
   ParsedAnimeHttpSource: "ParsedAnimeHttpSource",
@@ -495,15 +501,45 @@ export function analyzeSource(
     return emptyAnalysis(jadxOutDir, notes, chosen);
   }
 
-  // Properties
+  // ---- Entry subclass (the real extension class named in the manifest) ----
+  // The entry subclass passes the real lang/name/domains to the (possibly
+  // obfuscated) multisrc base via super(...). Parse it.
+  let entryLang: string | undefined;
+  let entryName: string | undefined;
+  let entryDomains: string[] = [];
+  const entry = findEntryClass(files, manifestClassHint);
+  if (entry) {
+    notes.push(`Found entry subclass: ${entry.className}`);
+    const superArgs = parseSuperCall(entry.src);
+    if (superArgs) {
+      // Convention: super(lang, name, domainEntries, hosterNames)
+      if (superArgs.strings.length >= 2) {
+        entryLang = superArgs.strings[0];
+        entryName = superArgs.strings[1];
+      }
+      if (superArgs.lists.length >= 1) {
+        entryDomains = superArgs.lists[0];
+      }
+    }
+    if (entryName) notes.push(`Entry name (from super args): ${entryName}`);
+    if (entryLang) notes.push(`Entry lang (from super args): ${entryLang}`);
+    if (entryDomains.length)
+      notes.push(`Entry domains: ${entryDomains.join(", ")}`);
+  }
+
+  // ---- Properties ----
+  // Prefer entry-class values (real), fall back to source-class extraction.
   let baseUrl = extractBaseUrl(src);
-  const lang = extractProperty(src, "lang");
-  const name = extractProperty(src, "name");
+  const lang = entryLang ?? extractProperty(src, "lang");
+  const name = entryName ?? extractProperty(src, "name");
   const versionId = extractIntProperty(src, "versionId");
   const isNsfw = extractBoolProperty(src, "nsfw");
 
-  // Settings + fallback baseUrl (preference-driven sources have no literal baseUrl).
-  const settings = analyzeSettings(src);
+  // ---- Settings + fallback baseUrl ----
+  // Use the decompiled-Java preference parser (setKey/setTitle method calls)
+  // for the preference list, then run the Kotlin-style analyzer for fallback
+  // baseUrl detection.
+  const settings = analyzeSettingsDecompiled(src, entryDomains);
   notes.push(...settings.notes);
   if (!baseUrl && settings.fallbackBaseUrl) {
     baseUrl = settings.fallbackBaseUrl;
@@ -554,7 +590,8 @@ export function analyzeSource(
     }
   }
 
-  // Request URLs
+  // Request URLs — prefer HttpUrl.Builder pattern (decompiled Java), fall back
+  // to string-concatenation template (Kotlin source style).
   const requestUrls: Record<string, string[]> = {};
   const requestMethods = [
     "popularAnimeRequest",
@@ -571,8 +608,13 @@ export function analyzeSource(
     if (methodOverrides.includes(meth as never)) {
       const body = extractMethodBody(src, meth);
       if (body) {
-        const { template, literals } = buildUrlTemplate(body, baseUrl);
-        requestUrls[meth] = [template, ...literals];
+        const builderTemplate = buildUrlFromBuilderPattern(body);
+        if (builderTemplate) {
+          requestUrls[meth] = [builderTemplate];
+        } else {
+          const { template, literals } = buildUrlTemplate(body, baseUrl);
+          requestUrls[meth] = [template, ...literals];
+        }
       }
     }
   }
@@ -587,6 +629,16 @@ export function analyzeSource(
       }
     }
   }
+
+  // animeDetailsParse selectors — this method parses the Document directly with
+  // selectFirst("...")/select("...") calls (not a FromElement method). Extract
+  // them in order; convert.ts maps them to title/genre/status/etc.
+  const detailsParseSelectors: string[] = [];
+  const detailsBody = extractMethodBody(src, "animeDetailsParse");
+  if (detailsBody) {
+    detailsParseSelectors.push(...extractJsoupSelectors(detailsBody));
+  }
+  fromElementSelectors["animeDetailsParse"] = detailsParseSelectors;
 
   // Filters
   const filterBody = methodOverrides.includes("getFilterList" as never)
@@ -616,7 +668,7 @@ export function analyzeSource(
 
   return {
     sourceClassFile: relative(process.cwd(), chosen.file),
-    sourceClassName: chosen.className,
+    sourceClassName: entry?.className ?? chosen.className,
     sourceType: chosen.baseType,
     candidateClasses: candidates.map((c) => c.className),
     methodOverrides,
@@ -630,6 +682,117 @@ export function analyzeSource(
     settings,
     notes,
   };
+}
+
+/**
+ * Analyze settings using the decompiled-Java preference parser (setKey/setTitle
+ * method calls) plus the Kotlin-style fallback for baseUrl/domains. The
+ * `entryDomains` (from the entry subclass super() call) are injected into the
+ * available domains + domain preference entries when the source uses
+ * `this.c.toArray(...)` (field reference we can't statically resolve).
+ */
+function analyzeSettingsDecompiled(
+  src: string,
+  entryDomains: string[],
+): SettingsAnalysis {
+  const notes: string[] = [];
+  const hasSetup =
+    /setupPreferenceScreen\s*\(/.test(src) ||
+    /ConfigurableAnimeSource/.test(src);
+
+  if (!hasSetup) {
+    return {
+      configurable: false,
+      preferences: [],
+      domainPreferenceKeys: [],
+      availableDomains: [],
+      notes: ["Source is not configurable (no setupPreferenceScreen)."],
+    };
+  }
+
+  // Run the Kotlin-style analyzer first (for PREF_* constants + fallback URLs).
+  const base = analyzeSettings(src);
+
+  // Parse the setupPreferenceScreen body with the decompiled-Java parser.
+  const body = extractMethodBody(src, "setupPreferenceScreen");
+  let prefs: {
+    key: string;
+    title: string;
+    type: string;
+    entries?: string[];
+    entryValues?: string[];
+    defaultValue?: string;
+    isDomain?: boolean;
+  }[] = [];
+  if (body) {
+    prefs = parsePreferenceScreen(body, src);
+  }
+
+  // Inject entryDomains into the domain preference (entries + entryValues)
+  // when the source referenced `this.c.toArray(...)` and we couldn't resolve it.
+  if (entryDomains.length > 0) {
+    const domainPref = prefs.find((p) => p.isDomain);
+    if (domainPref && (!domainPref.entries || domainPref.entries.length === 0)) {
+      domainPref.entries = entryDomains;
+      domainPref.entryValues = entryDomains.map((d) =>
+        /^https?:\/\//.test(d) ? d : `https://${d}`,
+      );
+      notes.push(
+        `Injected entry domains into "${domainPref.key}" preference.`,
+      );
+    }
+  }
+
+  // Merge: prefer decompiled prefs (richer), keep base for fallback URL detection.
+  const entryDomainUrls = entryDomains.map((d) =>
+    /^https?:\/\//.test(d) ? d : `https://${d}`,
+  );
+  const availableDomains = [
+    ...(domainPrefEntryValues(prefs) ?? []),
+    ...entryDomainUrls,
+    ...base.availableDomains.filter(
+      // Exclude mapper/API URLs that aren't site roots.
+      (d) => !/\/api\/|mapper|nekostream/i.test(d),
+    ),
+  ];
+  const dedupDomains = [...new Set(availableDomains)];
+  // Prefer the first entry domain (the source's defaultBaseUrl = "https://" + first).
+  // Fall back to base.fallbackBaseUrl only if no entry domains.
+  const fallbackBaseUrl =
+    entryDomainUrls[0] ?? base.fallbackBaseUrl ?? dedupDomains.find((d) => /^https?:\/\//.test(d));
+
+  notes.push(
+    `Decompiled preference parser found ${prefs.length} preference(s).`,
+  );
+  if (fallbackBaseUrl) {
+    notes.push(`Fallback base URL: ${fallbackBaseUrl}`);
+  }
+
+  return {
+    configurable: true,
+    preferences: prefs.map((p) => ({
+      key: p.key,
+      title: p.title,
+      type: p.type as SettingsAnalysis["preferences"][number]["type"],
+      entries: p.entries,
+      entryValues: p.entryValues,
+      default: p.defaultValue,
+      isDomainPreference: p.isDomain,
+    })),
+    domainPreferenceKeys: prefs
+      .filter((p) => p.isDomain)
+      .map((p) => p.key),
+    availableDomains: dedupDomains,
+    fallbackBaseUrl,
+    notes,
+  };
+}
+
+function domainPrefEntryValues(
+  prefs: { isDomain?: boolean; entryValues?: string[] }[],
+): string[] {
+  const dp = prefs.find((p) => p.isDomain);
+  return dp?.entryValues ?? [];
 }
 
 function emptyAnalysis(

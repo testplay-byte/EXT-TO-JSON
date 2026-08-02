@@ -40,6 +40,7 @@ import {
   type BrowseEndpoint,
   type VideoServer,
   type ListParse,
+  type DetailsConfig,
 } from "./types";
 
 /** Map a detected extractor keyword to a playground registry id. */
@@ -261,24 +262,12 @@ function assembleJson(input: AssembleInput): ExtensionJson {
     "/search?q={query}",
   );
 
-  // Details
-  const detailsFromElement = analysis.fromElementSelectors["animeDetailsFromElement"] ?? [];
-  const details = {
-    title: detailsFromElement[0] ?? analysis.selectors["animeDetailsSelector"] ?? "",
-    description: detailsFromElement[1] ?? "",
-    thumbnail: detailsFromElement[2] ?? "",
-    author: detailsFromElement[3] ?? "",
-    artist: detailsFromElement[4] ?? "",
-    genre: detailsFromElement[5] ?? "",
-    status: detailsFromElement[6] ?? "",
-    statusMapping: {
-      ongoing: ["ongoing", "ongoing?", "emission", "en cours"],
-      completed: ["completed", "finish", "termine"],
-      canceled: ["canceled", "cancelled"],
-      onHiatus: ["hiatus", "on hold"],
-    },
-    extras: {},
-  };
+  // Details — map animeDetailsParse selectors by content (title/genre/status/...).
+  const detailsSelectors =
+    analysis.fromElementSelectors["animeDetailsParse"] ??
+    analysis.fromElementSelectors["animeDetailsFromElement"] ??
+    [];
+  const details = buildDetailsConfig(detailsSelectors);
 
   // Episodes
   const epFromElement = analysis.fromElementSelectors["episodeFromElement"] ?? [];
@@ -447,6 +436,38 @@ function dedupeResolutions(servers: VideoServer[]): string[] {
   const set = new Set<string>();
   for (const s of servers) for (const q of s.qualities) set.add(q);
   return [...set];
+}
+
+/**
+ * Build the DetailsConfig from the selectors extracted from animeDetailsParse.
+ * Maps selectors by content keywords (title/genre/status/description/...) since
+ * the order varies between sources.
+ */
+function buildDetailsConfig(selectors: string[]): DetailsConfig {
+  const find = (re: RegExp) => selectors.find((s) => re.test(s)) ?? "";
+  const title = find(/title|h1|h2/i) || selectors[0] || "";
+  const genre = find(/genre/i);
+  const status = find(/status|state/i);
+  const description = find(/description|synopsis|summary/i);
+  const author = find(/author/i);
+  const artist = find(/artist|studio/i);
+  const thumbnail = find(/img|thumbnail|poster|cover/i);
+  return {
+    title,
+    description,
+    thumbnail,
+    author,
+    artist,
+    genre,
+    status,
+    statusMapping: {
+      ongoing: ["ongoing", "ongoing?", "emission", "en cours", "ongoing anime"],
+      completed: ["completed", "finish", "termine", "completed anime"],
+      canceled: ["canceled", "cancelled"],
+      onHiatus: ["hiatus", "on hold"],
+    },
+    extras: {},
+  };
 }
 
 function defaultUserAgent(): string {

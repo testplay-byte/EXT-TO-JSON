@@ -73,8 +73,11 @@ export async function fetchAndParseBrowse(
   const items: BrowseItem[] = [];
   $(parse.itemSelector).each((_, el) => {
     const $el = $(el);
-    const title = readField($, $el, parse.title, parse.thumbnailAttr);
+    // Title = text content (no attr).
+    const title = readField($, $el, parse.title, undefined);
+    // URL = href attribute.
     const urlVal = readField($, $el, parse.url, parse.urlAttr ?? "href");
+    // Thumbnail = src (or data-src) attribute.
     const thumb = readField($, $el, parse.thumbnail, parse.thumbnailAttr);
     items.push({
       title: title.trim(),

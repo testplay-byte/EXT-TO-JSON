@@ -31,13 +31,18 @@ const DEFAULT_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-/** Resolve a URL template against a base, expanding {page}/{query}/... */
+/** Resolve a URL template against a base, expanding {baseUrl}/{page}/{query}/... */
 export function resolveUrl(
   template: string,
   baseUrl: string,
   vars: Record<string, string | number> = {},
 ): string {
   let out = template;
+  // First, substitute {baseUrl} with the actual base URL (stripped trailing slash).
+  if (baseUrl && /^https?:\/\//.test(baseUrl)) {
+    out = out.replaceAll("{baseUrl}", baseUrl.replace(/\/$/, ""));
+  }
+  // Then substitute other vars ({page}, {query}, {vrf}, ...).
   for (const [k, v] of Object.entries(vars)) {
     out = out.replaceAll(`{${k}}`, encodeURIComponent(String(v)));
   }
