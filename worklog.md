@@ -233,3 +233,33 @@ Work Log:
 
 Stage Summary:
 - Windows launcher now completes fully: git → node → java → clone → deps → toolchain → db → dev server starts without errors.
+
+---
+Task ID: 16
+Agent: main (orchestrator)
+Task: Windows jadx fix + auto-open browser + processing UI + extension settings + playground settings popup.
+
+Work Log:
+- CRITICAL Windows fix: toolchain.ts now detects process.platform. On win32 it picks tools/bin/jadx.bat (the Windows launcher) and sets jadxBinIsBat=true; decompile.ts passes shell:true when jadxBinIsBat. This fixes the 'spawn ...jadx ENOENT' error that blocked ALL conversions on Windows. Also javaBin resolves to java.exe on Windows when JAVA_HOME is set.
+- Auto-open browser: scripts/dev.mjs now resolves the next binary from node_modules/.bin directly (no PATH reliance — fixes detached launch), and opens http://localhost:3000 via start/open/xdg-open when the server prints 'Ready'.
+- Conversion processing UI redesigned: new full-width ProcessingPanel with animated header gradient, rotating spinner, 6-stage timeline (Unpack/Manifest/Decompile/Analyze/Assemble/Health) with active-stage pulse animation, gradient progress bar with shimmer sweep, auto-scrolling dark log console, and a clear error detail block. Shows immediately on upload.
+- Extension settings (new schema field):
+  - types.ts: added ExtensionSettings + PreferenceDef types.
+  - settings.ts: new analyzer parsing setupPreferenceScreen + PREF_*_KEY/_TITLE/_DEFAULT/_ENTRIES/_VALUES constants. Flags domain preferences, synthesizes https:// entryValues when missing, detects availableDomains + fallback baseUrl from PREF_DOMAIN_DEFAULT/domainEntries/defaultBaseUrl. VALIDATED against real AnimeBlkom source — extracted both prefs (quality + domain) correctly with all entries.
+  - analyze.ts: runs settings analysis; improved baseUrl detection (preference defaults → first site-root URL literal fallback).
+  - convert.ts: maps settings into JSON output.
+- Settings persistence + playground integration:
+  - settings-store.ts: load/save to converted/<id>.settings.json; effectiveSource() swaps baseUrl to selected domain.
+  - load-effective.ts: all 5 playground routes now apply saved settings so fetches honour the chosen domain.
+  - /api/extensions/[id]/settings (GET/PUT) routes.
+  - resolveUrl guards against placeholder/empty baseUrl (no crash).
+- UI:
+  - Extension details page: new 'Extension settings' section (SlidersHorizontal icon) showing every preference + available domains.
+  - Playground: new Settings dialog (button in picker) lets user configure preferences; saving invalidates all playground queries to refetch with new baseUrl.
+  - Fixed 'Open in Playground' passing packageName instead of DB id (HealthReport + ExtensionDetailsView now pass resultId/extensionId).
+- Agent Browser verified: details page renders all 7 sections (Metadata, Capabilities, Checks, Browse, Videos, Extension settings, Raw analysis); settings API responds; conversion completes done 100%.
+- Docs: JSON_SCHEMA.md documents settings field + PreferenceDef; TROUBLESHOOTING.md adds Windows jadx, fetch failed, tee entries.
+- Lint clean. Pushed to GitHub (ff2087d).
+
+Stage Summary:
+- Windows conversion now works (jadx.bat fix). Auto-open browser. Rich processing animation. Full extension settings extraction + configuration. Playground honours saved domain. All pushed.
