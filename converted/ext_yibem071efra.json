@@ -1,0 +1,476 @@
+{
+  "schemaVersion": "1.0.0",
+  "converter": {
+    "version": "1.0.0",
+    "convertedAt": "2026-08-02T14:03:05.151Z",
+    "durationMs": 9880,
+    "toolchain": {
+      "apktool": "2.9.3",
+      "jadx": "1.4.7",
+      "java": "openjdk version 21.0.11 2026-04-21"
+    },
+    "inputFile": "jellyfin.apk",
+    "inputSha256": "54e76891daf987e53f671fd86a4ce2a409666e38b5b81b30dee2973f7520085e"
+  },
+  "meta": {
+    "name": "Aniyomi: Jellyfin",
+    "lang": "all",
+    "baseUrl": "The server address",
+    "versionId": 0,
+    "isNsfw": false,
+    "packageName": "eu.kanade.tachiyomi.animeextension.all.jellyfin",
+    "apkVersionCode": 0,
+    "apkVersionName": "",
+    "sourceClassName": "Jellyfin",
+    "sourceType": "AnimeHttpSource"
+  },
+  "health": {
+    "score": 75,
+    "status": "warning",
+    "summary": "Conversion incomplete — 75% complete. 3 warning(s), 0 error(s).",
+    "checks": [
+      {
+        "id": "manifest",
+        "label": "AndroidManifest parsed",
+        "status": "pass",
+        "detail": "Package name, version code/name and meta-data extracted."
+      },
+      {
+        "id": "source-class",
+        "label": "Source class located",
+        "status": "pass",
+        "detail": "Jellyfin extends AnimeHttpSource."
+      },
+      {
+        "id": "base-url",
+        "label": "Base URL extracted",
+        "status": "pass",
+        "detail": "The server address"
+      },
+      {
+        "id": "language",
+        "label": "Language extracted",
+        "status": "pass",
+        "detail": "all"
+      },
+      {
+        "id": "name",
+        "label": "Display name extracted",
+        "status": "fail",
+        "detail": "name not found in source; falling back to package slug / app_name."
+      },
+      {
+        "id": "method-overrides",
+        "label": "Method overrides detected",
+        "status": "pass",
+        "detail": "11 overridden methods detected."
+      },
+      {
+        "id": "browse-popular",
+        "label": "Popular endpoint",
+        "status": "pass",
+        "detail": "popularAnimeRequest + popularAnimeSelector present."
+      },
+      {
+        "id": "browse-search",
+        "label": "Search endpoint",
+        "status": "pass",
+        "detail": "searchAnimeRequest present."
+      },
+      {
+        "id": "details",
+        "label": "Anime details parsing",
+        "status": "fail",
+        "detail": "Details parsing missing."
+      },
+      {
+        "id": "episodes",
+        "label": "Episode list parsing",
+        "status": "pass",
+        "detail": "episodeListParse present."
+      },
+      {
+        "id": "videos",
+        "label": "Video extraction",
+        "status": "pass",
+        "detail": "videoListParse / videoUrlParse present."
+      },
+      {
+        "id": "servers",
+        "label": "Video servers detected",
+        "status": "fail",
+        "detail": "No known video server names detected in source string literals."
+      },
+      {
+        "id": "filters",
+        "label": "Filter list",
+        "status": "skip",
+        "detail": "No filters."
+      }
+    ],
+    "warnings": [
+      "Display name extracted: name not found in source; falling back to package slug / app_name.",
+      "Anime details parsing: Details parsing missing.",
+      "Video servers detected: No known video server names detected in source string literals."
+    ],
+    "errors": []
+  },
+  "capabilities": {
+    "sourceKind": "anime",
+    "supportsLatest": true,
+    "supportsSearch": true,
+    "supportsFilters": false,
+    "supportsEpisodes": true,
+    "supportsVideos": true,
+    "supportsSubtitles": true,
+    "supportsAudioTracks": true
+  },
+  "source": {
+    "baseUrl": "The server address",
+    "lang": "all",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    },
+    "rateLimitPerSecond": 0
+  },
+  "browse": {
+    "popular": {
+      "method": "GET",
+      "url": "Select library in the extension settings./Users/{getUserId()}/Items",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    },
+    "latest": {
+      "method": "GET",
+      "url": "SortBy",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    },
+    "search": {
+      "method": "GET",
+      "url": "query",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    }
+  },
+  "filters": [],
+  "details": {
+    "title": "",
+    "description": "",
+    "thumbnail": "",
+    "author": "",
+    "artist": "",
+    "genre": "",
+    "status": "",
+    "statusMapping": {
+      "ongoing": [
+        "ongoing",
+        "ongoing?",
+        "emission",
+        "en cours"
+      ],
+      "completed": [
+        "completed",
+        "finish",
+        "termine"
+      ],
+      "canceled": [
+        "canceled",
+        "cancelled"
+      ],
+      "onHiatus": [
+        "hiatus",
+        "on hold"
+      ]
+    },
+    "extras": {}
+  },
+  "episodes": {
+    "method": "GET",
+    "url": "The server address/",
+    "headers": {},
+    "parse": {
+      "itemSelector": "",
+      "number": "a",
+      "name": "",
+      "url": "a",
+      "scanlator": "",
+      "date": "",
+      "numberExtraction": "regex",
+      "numberRegex": "(\\d+(?:\\.\\d+)?)"
+    }
+  },
+  "videos": {
+    "method": "GET",
+    "url": "episode",
+    "headers": {},
+    "servers": [],
+    "resolutions": [],
+    "formats": [
+      "mp4",
+      "m3u8"
+    ],
+    "extractorStrategy": "none",
+    "detectedExtractors": []
+  },
+  "subtitles": {
+    "supported": true,
+    "source": "video-track",
+    "formats": [
+      "vtt",
+      "srt"
+    ],
+    "note": "Subtitle references detected in source; playground will surface any Video.subtitleTracks."
+  },
+  "audio": {
+    "supported": true,
+    "source": "video-track",
+    "tracks": [],
+    "note": "Audio track references detected; playground will surface any Video.audioTracks."
+  },
+  "rawAnalysis": {
+    "decompiledPath": "work/job-1785679375271/jadx-out",
+    "sourceClassFile": "work/job-1785679375271/jadx-out/sources/eu/kanade/tachiyomi/animeextension/all/jellyfin/Jellyfin.java",
+    "candidateClasses": [
+      "Jellyfin"
+    ],
+    "methodOverrides": [
+      "popularAnimeRequest",
+      "popularAnimeParse",
+      "latestUpdatesRequest",
+      "latestUpdatesParse",
+      "searchAnimeRequest",
+      "searchAnimeParse",
+      "animeDetailsParse",
+      "episodeListRequest",
+      "episodeListParse",
+      "videoListRequest",
+      "videoListParse"
+    ],
+    "stringLiterals": [
+      {
+        "method": "popularAnimeRequest",
+        "values": [
+          "Select library in the extension settings.",
+          "/Users/",
+          "/Items",
+          "StartIndex",
+          "Limit",
+          "20",
+          "Recursive",
+          "SortBy",
+          "SortName",
+          "SortOrder",
+          "Ascending",
+          "IncludeItemTypes",
+          "Movie,Season,BoxSet",
+          "ImageTypeLimit",
+          "1",
+          "ParentId",
+          "EnableImageTypes",
+          "Primary"
+        ]
+      },
+      {
+        "method": "popularAnimeParse",
+        "values": [
+          "response",
+          "StartIndex",
+          "BoxSet",
+          "ParentId",
+          "baseUrl"
+        ]
+      },
+      {
+        "method": "latestUpdatesRequest",
+        "values": [
+          "SortBy",
+          "DateCreated,SortName",
+          "SortOrder",
+          "Descending"
+        ]
+      },
+      {
+        "method": "latestUpdatesParse",
+        "values": [
+          "response"
+        ]
+      },
+      {
+        "method": "searchAnimeRequest",
+        "values": [
+          "query",
+          "filters",
+          "IncludeItemTypes",
+          "Movie,Series",
+          "Limit",
+          "5",
+          "SearchTerm"
+        ]
+      },
+      {
+        "method": "searchAnimeParse",
+        "values": [
+          "response",
+          "StartIndex",
+          "ParentId",
+          "StartIndex",
+          "Limit",
+          "baseUrl"
+        ]
+      },
+      {
+        "method": "animeDetailsParse",
+        "values": [
+          "response",
+          "baseUrl"
+        ]
+      },
+      {
+        "method": "episodeListRequest",
+        "values": [
+          "anime",
+          "http",
+          "Migrate from jellyfin to jellyfin",
+          "seriesId",
+          "/",
+          "Shows",
+          ",",
+          "Episodes",
+          "seasonId",
+          "userId",
+          "Fields",
+          "Overview,MediaSources,DateCreated",
+          "boxSet",
+          "Recursive",
+          "SortBy",
+          "SortName",
+          "SortOrder",
+          "Ascending",
+          "IncludeItemTypes",
+          "Movie,Season,BoxSet,Series",
+          "ParentId",
+          "Fields",
+          "DateCreated",
+          "series",
+          "/",
+          "Shows",
+          "Episodes",
+          "Fields",
+          "DateCreated",
+          "Fields",
+          "DateCreated"
+        ]
+      },
+      {
+        "method": "episodeListParse",
+        "values": [
+          "response",
+          "boxSet",
+          "",
+          "baseUrl",
+          " - "
+        ]
+      },
+      {
+        "method": "videoListRequest",
+        "values": [
+          "episode",
+          "http",
+          "Migrate from jellyfin to jellyfin"
+        ]
+      },
+      {
+        "method": "videoListParse",
+        "values": [
+          "response",
+          "/Items/",
+          "/PlaybackInfo?userId=",
+          "Video",
+          "Audio",
+          "Subtitle",
+          "/Videos/",
+          "/Subtitles/",
+          "/0/Stream.",
+          "?api_key=",
+          "B",
+          "b",
+          "Source - ",
+          "ps",
+          "/Videos/",
+          "/stream?static=True&api_key=",
+          "/videos/",
+          "/main.m3u8",
+          "VideoCodec",
+          "h264",
+          "AudioCodec",
+          "aac,mp3",
+          "AudioStreamIndex",
+          "SubtitleStreamIndex",
+          "VideoBitrate",
+          "AudioBitrate",
+          "PlaySessionId",
+          "TranscodingMaxAudioChannels",
+          "6",
+          "RequireAvc",
+          "SegmentContainer",
+          "ts",
+          "MinSegments",
+          "1",
+          "BreakOnNonKeyFrames",
+          "h264-profile",
+          "high,main,baseline,constrainedbaseline",
+          "h264-level",
+          "51",
+          "h264-deinterlace",
+          "TranscodeReasons",
+          "VideoCodecNotSupported,AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+        ]
+      }
+    ],
+    "manifestDump": {
+      "packageName": "eu.kanade.tachiyomi.animeextension.all.jellyfin",
+      "versionCode": 0,
+      "versionName": "",
+      "metaDataKeys": [
+        "tachiyomi.animeextension.class",
+        "tachiyomi.animeextension.nsfw"
+      ]
+    },
+    "resourceStrings": {},
+    "analyzerNotes": [
+      "Scanned 365 .java files from jadx output.",
+      "Found 1 candidate source class(es): Jellyfin (AnimeHttpSource, score=13)",
+      "Manifest hint '.JellyfinFactory' did not match any candidate; using top-scored Jellyfin.",
+      "Detected 11 overridden methods.",
+      "Extracted 0 selectors, 5 request URLs, 0 filters, 0 extractors."
+    ]
+  }
+}
