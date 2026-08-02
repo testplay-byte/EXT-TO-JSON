@@ -106,6 +106,16 @@ export async function deleteExtension(id: string): Promise<void> {
   await jfetch<{ ok: boolean }>(`/api/extensions/${id}`, { method: "DELETE" });
 }
 
+/* ------------------------- Extension settings -------------------------- */
+export type PrefValue = string | boolean | string[];
+export const getSettings = (id: string) =>
+  jfetch<{ values: Record<string, PrefValue> }>(`/api/extensions/${id}/settings`);
+export const saveSettings = (id: string, values: Record<string, PrefValue>) =>
+  jfetch<{ ok: boolean; values: Record<string, PrefValue> }>(
+    `/api/extensions/${id}/settings`,
+    { method: "PUT", body: JSON.stringify({ values }) },
+  );
+
 /* ---------------------------- Playground ------------------------------ */
 export interface BrowseItem {
   title: string;

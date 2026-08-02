@@ -14,6 +14,7 @@ import {
   Cpu,
   FileUp,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import {
   convertApk,
@@ -63,6 +64,7 @@ export default function ConverterView({
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<ConversionJob | null>(null);
   const [result, setResult] = useState<ExtensionJson | null>(null);
+  const [resultId, setResultId] = useState<string | null>(null);
   const [selectedExtId, setSelectedExtId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +94,7 @@ export default function ConverterView({
           const json = await getExtension(job.extensionId);
           if (active) {
             setResult(json);
+            setResultId(job.extensionId);
             setJobId(null);
             qc.invalidateQueries({ queryKey: ["extensions"] });
             toast.success(
@@ -117,6 +120,7 @@ export default function ConverterView({
   const startConvert = useCallback(async (file: File) => {
     try {
       setResult(null);
+      setResultId(null);
       setJob(null);
       const { jobId } = await convertApk(file);
       setJobId(jobId);
@@ -295,67 +299,28 @@ export default function ConverterView({
         </Card>
       </div>
 
-      {/* Active job */}
+      {/* Active job — full-width animated processing panel */}
       <AnimatePresence>
         {job && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: 12, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -12, height: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    {job.status === "error" ? (
-                      <AlertCircle className="h-5 w-5 text-[var(--accent-danger)]" />
-                    ) : job.status === "done" ? (
-                      <CheckCircle2 className="h-5 w-5 text-[var(--accent-teal)]" />
-                    ) : (
-                      <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-teal)]" />
-                    )}
-                    Converting {job.apkFileName}
-                  </span>
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {STAGE_LABEL[job.status] ?? job.status}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>{job.message}</span>
-                    <span>{job.progress}%</span>
-                  </div>
-                  <Progress value={job.progress} className="h-2" />
-                </div>
-                {job.logs.length > 0 && (
-                  <div className="max-h-40 overflow-y-auto rounded-lg bg-[var(--surface-alt)] p-3 font-mono text-xs space-y-0.5">
-                    {job.logs.slice(-30).map((l, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          l.level === "error" && "text-[var(--accent-danger)]",
-                          l.level === "warn" && "text-[var(--accent-amber)]",
-                          l.level === "info" && "text-muted-foreground",
-                        )}
-                      >
-                        <span className="opacity-50">
-                          {new Date(l.ts).toLocaleTimeString()}{" "}
-                        </span>
-                        {l.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ProcessingPanel job={job} />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Last result */}
-      {result && <HealthReport json={result} onOpenInPlayground={onOpenInPlayground} />}
+      {result && (
+        <HealthReport
+          json={result}
+          extensionId={resultId}
+          onOpenInPlayground={onOpenInPlayground}
+        />
+      )}
 
       {/* Library */}
       <ExtensionsLibrary
@@ -368,11 +333,242 @@ export default function ConverterView({
 
 /* -------------------------------------------------------------------------- */
 
+const PIPELINE_STAGES: {
+  id: string;
+  label: string;
+  threshold: number;
+  icon: typeof Loader2;
+}[] = [
+  { id: "unpacking", label: "Unpack", threshold: 2, icon: Package },
+  { id: "decoding-manifest", label: "Manifest", threshold: 18, icon: FileJson },
+  { id: "decompiling", label: "Decompile", threshold: 28, icon: Cpu },
+  { id: "analyzing", label: "Analyze", threshold: 55, icon: Search },
+  { id: "assembling", label: "Assemble", threshold: 78, icon: FileUp },
+  { id: "health-check", label: "Health", threshold: 92, icon: CheckCircle2 },
+];
+
+function ProcessingPanel({ job }: { job: ConversionJob }) {
+  const isDone = job.status === "done";
+  const isError = job.status === "error";
+  const activeStageIdx = Math.max(
+    0,
+    PIPELINE_STAGES.findIndex((s) => job.progress < s.threshold),
+  );
+  const logRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll logs to bottom on update.
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [job.logs]);
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden",
+        isError && "border-[var(--accent-danger)]/40",
+        isDone && "border-[var(--accent-teal)]/40",
+      )}
+    >
+      {/* Header bar with animated gradient when running */}
+      <div
+        className={cn(
+          "relative px-5 py-4 border-b border-border overflow-hidden",
+          !isDone && !isError && "bg-[var(--surface-alt)]",
+          isDone && "bg-[var(--accent-teal-soft)]",
+          isError && "bg-[var(--accent-danger-soft)]",
+        )}
+      >
+        {!isDone && !isError && (
+          <motion.div
+            className="absolute inset-0 opacity-30"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, var(--accent-indigo-soft), transparent)",
+            }}
+            animate={{ x: ["-100%", "100%"] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          />
+        )}
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {isError ? (
+              <AlertCircle className="h-6 w-6 shrink-0 text-[var(--accent-danger)]" />
+            ) : isDone ? (
+              <CheckCircle2 className="h-6 w-6 shrink-0 text-[var(--accent-teal)]" />
+            ) : (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 className="h-6 w-6 shrink-0 text-[var(--accent-indigo)]" />
+              </motion.div>
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold truncate">
+                {isDone
+                  ? "Conversion complete"
+                  : isError
+                    ? "Conversion failed"
+                    : "Converting…"}
+              </p>
+              <p className="text-xs text-muted-foreground font-mono truncate">
+                {job.apkFileName}
+              </p>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-mono text-xs shrink-0",
+              isDone && "border-[var(--accent-teal)]/40 text-[var(--accent-teal)]",
+              isError && "border-[var(--accent-danger)]/40 text-[var(--accent-danger)]",
+            )}
+          >
+            {STAGE_LABEL[job.status] ?? job.status} · {job.progress}%
+          </Badge>
+        </div>
+      </div>
+
+      <CardContent className="p-5 space-y-5">
+        {/* Progress bar */}
+        <div>
+          <div className="flex justify-between text-xs text-muted-foreground mb-2">
+            <span className="truncate">{job.message}</span>
+            <span className="font-mono shrink-0 ml-2">{job.progress}%</span>
+          </div>
+          <div className="relative h-2.5 w-full rounded-full bg-[var(--surface-alt)] overflow-hidden">
+            <motion.div
+              className={cn(
+                "absolute inset-y-0 left-0 rounded-full",
+                isError
+                  ? "bg-[var(--accent-danger)]"
+                  : isDone
+                    ? "bg-[var(--accent-teal)]"
+                    : "bg-gradient-to-r from-[var(--accent-indigo)] to-[var(--accent-teal)]",
+              )}
+              animate={{ width: `${job.progress}%` }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
+            {!isDone && !isError && job.progress > 0 && (
+              <motion.div
+                className="absolute inset-y-0 w-20"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
+                }}
+                animate={{ x: ["-80px", "100%"] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Stage timeline */}
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {PIPELINE_STAGES.map((stage, i) => {
+            const StageIcon = stage.icon;
+            const isPast = i < activeStageIdx || isDone;
+            const isActive = i === activeStageIdx && !isDone && !isError;
+            return (
+              <div
+                key={stage.id}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition-all",
+                  isPast && "border-[var(--accent-teal)]/30 bg-[var(--accent-teal-soft)]",
+                  isActive &&
+                    "border-[var(--accent-indigo)] bg-[var(--accent-indigo-soft)] scale-[1.03]",
+                  !isPast && !isActive && "border-border bg-[var(--surface-alt)] opacity-60",
+                  isError && i >= activeStageIdx && "opacity-40",
+                )}
+              >
+                <div className="relative">
+                  <StageIcon
+                    className={cn(
+                      "h-4 w-4",
+                      isPast && "text-[var(--accent-teal)]",
+                      isActive && "text-[var(--accent-indigo)]",
+                      !isPast && !isActive && "text-muted-foreground",
+                    )}
+                  />
+                  {isActive && (
+                    <motion.div
+                      className="absolute inset-0 -z-10"
+                      animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      style={{
+                        background: "var(--accent-indigo)",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] font-medium",
+                    isPast && "text-[var(--accent-teal)]",
+                    isActive && "text-[var(--accent-indigo)]",
+                    !isPast && !isActive && "text-muted-foreground",
+                  )}
+                >
+                  {stage.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Live logs */}
+        {job.logs.length > 0 && (
+          <div
+            ref={logRef}
+            className="max-h-44 overflow-y-auto rounded-xl bg-[#1a1a1c] p-3 font-mono text-xs space-y-0.5 border border-border"
+          >
+            {job.logs.slice(-50).map((l, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex gap-2",
+                  l.level === "error" && "text-[var(--accent-danger)]",
+                  l.level === "warn" && "text-[var(--accent-amber)]",
+                  l.level === "info" && "text-[#a8a6a2]",
+                )}
+              >
+                <span className="opacity-40 shrink-0">
+                  {new Date(l.ts).toLocaleTimeString()}
+                </span>
+                <span className="break-all">{l.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error detail */}
+        {isError && job.error && (
+          <div className="rounded-xl border border-[var(--accent-danger)]/40 bg-[var(--accent-danger-soft)] p-3 text-sm">
+            <p className="font-semibold text-[var(--accent-danger)] flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" /> Error
+            </p>
+            <p className="text-muted-foreground mt-1 font-mono text-xs break-all">
+              {job.error}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
 function HealthReport({
   json,
+  extensionId,
   onOpenInPlayground,
 }: {
   json: ExtensionJson;
+  extensionId: string | null;
   onOpenInPlayground?: (id: string) => void;
 }) {
   return (
@@ -391,10 +587,10 @@ function HealthReport({
             </div>
             <div className="flex items-center gap-2">
               <HealthBadge status={json.health.status} score={json.health.score} />
-              {onOpenInPlayground && (
+              {onOpenInPlayground && extensionId && (
                 <Button
                   size="sm"
-                  onClick={() => onOpenInPlayground(json.meta.packageName)}
+                  onClick={() => onOpenInPlayground(extensionId)}
                 >
                   Open in Playground
                 </Button>

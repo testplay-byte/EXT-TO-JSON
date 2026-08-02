@@ -402,6 +402,34 @@ This is expected — the paths reflect the machine that ran the conversion.
 The playground doesn't read these paths (it loads the JSON from
 `converted/<id>.json` directly), so this is purely cosmetic.
 
+### Conversion fails with `spawn ...\tools\bin\jadx ENOENT` on Windows
+
+This was a bug in earlier versions: the toolchain resolver pointed at
+`tools/bin/jadx` (the Unix shell script), which Windows cannot execute. The
+converter now detects the platform and uses `tools/bin/jadx.bat` on Windows
+(invoked with `shell: true`). Re-run `START.bat` to pull the fix, or re-clone.
+
+### Playground shows "fetch failed" / wrong base URL
+
+The extension's `baseUrl` is often preference-driven (e.g.
+`preferences.getString(PREF_DOMAIN_KEY, defaultBaseUrl)`). The converter now
+extracts a fallback base URL from preference defaults / domain lists and stores
+all available domains in `settings.availableDomains`. If the playground can't
+reach the site:
+
+1. Open the extension's **Details** page → **Extension settings** section to see
+   the detected domains.
+2. In the **Playground**, click the **Settings** button (top-right of the
+   extension picker) and pick a different domain. Saved settings are applied to
+   every subsequent fetch.
+
+### `bun run dev` fails with "command not found: tee" on Windows
+
+Fixed. The `dev` script is now `node scripts/dev.mjs`, a cross-platform launcher
+that tees output to both the console and `dev.log` without relying on the
+Unix-only `tee` command. It also auto-opens `http://localhost:3000` in your
+default browser when the server is ready.
+
 ---
 
 ## Still stuck?

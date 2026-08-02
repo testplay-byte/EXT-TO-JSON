@@ -36,6 +36,8 @@ audited — nothing is silently hidden.
 - [`subtitles` — `SubtitlesConfig`](#subtitles--subtitlesconfig)
 - [`audio` — `AudioConfig`](#audio--audioconfig)
   - [`AudioTrack`](#audiotrack)
+- [`settings` — `ExtensionSettings`](#settings--extensionsettings)
+  - [`PreferenceDef`](#preferencedef)
 - [`rawAnalysis` — `RawAnalysis`](#rawanalysis--rawanalysis)
 - [URL template placeholders](#url-template-placeholders)
 - [CSS selector semantics](#css-selector-semantics)
@@ -61,6 +63,7 @@ audited — nothing is silently hidden.
 | `videos` | [`VideosConfig`](#videos--videosconfig) | yes | Video extraction: servers, resolutions, formats, extractor strategy. |
 | `subtitles` | [`SubtitlesConfig`](#subtitles--subtitlesconfig) | yes | Subtitle track handling. |
 | `audio` | [`AudioConfig`](#audio--audioconfig) | yes | Multiple audio track handling. |
+| `settings` | [`ExtensionSettings`](#settings--extensionsettings) | yes | User-configurable preferences (domain, quality, etc.) extracted from the source. |
 | `rawAnalysis` | [`RawAnalysis`](#rawanalysis--rawanalysis) | yes | Raw analysis dump for debugging / transparency. |
 
 ---
@@ -392,6 +395,71 @@ client-side before playback.
 > tracks for separate URLs. The playground surfaces the available tracks but
 > only the in-manifest (HLS `EXT-X-MEDIA`) tracks can actually be selected
 > during playback. This is a documented limitation, not a bug.
+
+---
+
+## `settings` — `ExtensionSettings`
+
+User-configurable preferences extracted from the decompiled source. Extensions
+that implement `ConfigurableAnimeSource` override `setupPreferenceScreen` and
+add `ListPreference` / `EditTextPreference` / `SwitchPreference` entries, each
+backed by `PREF_*_KEY` / `PREF_*_TITLE` / `PREF_*_DEFAULT` / `PREF_*_ENTRIES`
+constants in a companion object.
+
+The converter parses these and the playground exposes a Settings dialog so the
+user can change them (e.g. swap the active domain). Saved values are persisted
+to `converted/<id>.settings.json` and applied to every playground fetch via the
+effective-source loader.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `configurable` | `boolean` | yes | `true` when the source implements `ConfigurableAnimeSource` / has `setupPreferenceScreen`. |
+| `preferences` | [`PreferenceDef[]`](#preferencedef) | yes | Detected preferences. Empty array if none. |
+| `domainPreferenceKeys` | `string[]` | yes | Keys of preferences that control the base URL (so the playground can swap it). |
+| `availableDomains` | `string[]` | yes | Domains detected from the source (for the domain picker). May be full URLs or bare hostnames. |
+
+### `PreferenceDef`
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `key` | `string` | yes | Stable preference key (e.g. `pref_domain_key`). |
+| `title` | `string` | yes | Human-readable title shown to the user. |
+| `type` | `"list" \| "text" \| "switch" \| "multiselect" \| "unknown"` | yes | Preference type. |
+| `entries` | `string[]?` | no | For `list`/`multiselect`: the option labels. |
+| `entryValues` | `string[]?` | no | For `list`/`multiselect`: the option values (parallel to `entries`). For domain preferences without explicit values, these are synthesized as `https://<entry>`. |
+| `default` | `string \| boolean \| string[]?` | no | Default value. |
+| `note` | `string?` | no | Free-text note. |
+| `isDomainPreference` | `boolean?` | no | `true` when this preference controls the base URL / domain. |
+
+Example:
+
+```json
+"settings": {
+  "configurable": true,
+  "preferences": [
+    {
+      "key": "preferred_quality",
+      "title": "Preferred quality",
+      "type": "list",
+      "entries": ["1080p", "720p", "480p", "360p", "240p"],
+      "entryValues": ["1080p", "720p", "480p", "360p", "240p"],
+      "default": "720p",
+      "isDomainPreference": false
+    },
+    {
+      "key": "pref_domain_key",
+      "title": "Preferred domain",
+      "type": "list",
+      "entries": ["animeblkom.net", "animeblkom.tv", "blkom.com"],
+      "entryValues": ["https://animeblkom.net", "https://animeblkom.tv", "https://blkom.com"],
+      "default": "https://animeblkom.net",
+      "isDomainPreference": true
+    }
+  ],
+  "domainPreferenceKeys": ["pref_domain_key"],
+  "availableDomains": ["https://animeblkom.net", "https://animeblkom.tv", "https://blkom.com"]
+}
+```
 
 ---
 

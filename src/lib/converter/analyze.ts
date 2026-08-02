@@ -28,6 +28,7 @@ import type {
   RawAnalysis,
   SourceType,
 } from "./types";
+import { analyzeSettings, type SettingsAnalysis } from "./settings";
 
 const BASE_CLASSES: Record<string, SourceType> = {
   ParsedAnimeHttpSource: "ParsedAnimeHttpSource",
@@ -153,6 +154,7 @@ export interface SourceAnalysis {
   filters: { name: string; type: string; values?: string[] }[];
   detectedExtractors: string[];
   stringLiterals: { method: string; values: string[] }[];
+  settings: import("./settings").SettingsAnalysis;
   notes: string[];
 }
 
@@ -483,11 +485,44 @@ export function analyzeSource(
   }
 
   // Properties
-  const baseUrl = extractProperty(src, "baseUrl");
+  let baseUrl = extractProperty(src, "baseUrl");
   const lang = extractProperty(src, "lang");
   const name = extractProperty(src, "name");
   const versionId = extractIntProperty(src, "versionId");
   const isNsfw = extractBoolProperty(src, "nsfw");
+
+  // Settings + fallback baseUrl (preference-driven sources have no literal baseUrl).
+  const settings = analyzeSettings(src);
+  notes.push(...settings.notes);
+  if (!baseUrl && settings.fallbackBaseUrl) {
+    baseUrl = settings.fallbackBaseUrl;
+    notes.push(
+      `baseUrl is preference-driven; using fallback "${baseUrl}" from settings.`,
+    );
+  }
+  // Last-resort: scan for any https URL that looks like a site root.
+  if (!baseUrl) {
+    const urlRe = /"(https?:\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'\s]*)"/gi;
+    let um: RegExpExecArray | null;
+    const candidates: string[] = [];
+    while ((um = urlRe.exec(src)) !== null) {
+      const u = um[1];
+      // Skip asset/js/api-ish URLs; keep site roots.
+      if (
+        !/(\/ajax\/|\/api\/|\.js|\.css|\.png|\.jpg|github\.com|googleapis|jsdelivr)/.test(
+          u,
+        )
+      ) {
+        candidates.push(u);
+      }
+    }
+    if (candidates.length) {
+      baseUrl = candidates[0];
+      notes.push(
+        `baseUrl inferred from first site-root URL literal: "${baseUrl}".`,
+      );
+    }
+  }
 
   // Method overrides (deduped — anime & manga share some method names)
   const allMethods = [...new Set([...ANIME_METHODS, ...MANGA_METHODS])];
@@ -581,6 +616,7 @@ export function analyzeSource(
     filters,
     detectedExtractors,
     stringLiterals,
+    settings,
     notes,
   };
 }
@@ -605,6 +641,13 @@ function emptyAnalysis(
     filters: [],
     detectedExtractors: [],
     stringLiterals: [],
+    settings: {
+      configurable: false,
+      preferences: [],
+      domainPreferenceKeys: [],
+      availableDomains: [],
+      notes: [],
+    } as SettingsAnalysis,
     notes,
   };
 }

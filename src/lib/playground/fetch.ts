@@ -41,10 +41,15 @@ export function resolveUrl(
   for (const [k, v] of Object.entries(vars)) {
     out = out.replaceAll(`{${k}}`, encodeURIComponent(String(v)));
   }
-  // {query} may already be encoded; handle both
-  if (!out.startsWith("http")) {
-    out = (baseUrl.replace(/\/$/, "")) + (out.startsWith("/") ? out : "/" + out);
+  // If the template is already a full URL, use it as-is.
+  if (/^https?:\/\//.test(out)) return out;
+  // Otherwise join with baseUrl. Guard against placeholder/empty baseUrl.
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    // Return the template unchanged so the caller can detect the bad URL via
+    // the subsequent fetch failure (which surfaces a clear error message).
+    return out;
   }
+  out = baseUrl.replace(/\/$/, "") + (out.startsWith("/") ? out : "/" + out);
   return out;
 }
 

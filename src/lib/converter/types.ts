@@ -54,8 +54,51 @@ export interface ExtensionJson {
   subtitles: SubtitlesConfig;
   /** Multiple audio track handling. */
   audio: AudioConfig;
+  /** User-configurable settings (preferences) extracted from the source. */
+  settings: ExtensionSettings;
   /** Raw analysis dump for debugging / transparency. */
   rawAnalysis: RawAnalysis;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Extension settings (preferences)                                          */
+/* -------------------------------------------------------------------------- */
+
+export type PreferenceType =
+  | "list"
+  | "text"
+  | "switch"
+  | "multiselect"
+  | "unknown";
+
+export interface PreferenceDef {
+  /** Stable key used by the extension (e.g. "pref_domain_key"). */
+  key: string;
+  /** Human-readable title shown to the user. */
+  title: string;
+  /** Preference type. */
+  type: PreferenceType;
+  /** For list/multiselect: the option labels. */
+  entries?: string[];
+  /** For list/multiselect: the option values (parallel to entries). */
+  entryValues?: string[];
+  /** Default value. */
+  default?: string | boolean | string[];
+  /** Free-text note (e.g. "Controls which domain is used for requests"). */
+  note?: string;
+  /** True when this preference controls the base URL / domain. */
+  isDomainPreference?: boolean;
+}
+
+export interface ExtensionSettings {
+  /** Whether the source is configurable (implements ConfigurableAnimeSource). */
+  configurable: boolean;
+  /** Detected preferences. Empty array if none / not configurable. */
+  preferences: PreferenceDef[];
+  /** Keys of preferences that affect baseUrl (so the playground can swap). */
+  domainPreferenceKeys: string[];
+  /** Optional domains list detected from the source (for the domain picker). */
+  availableDomains: string[];
 }
 
 /* -------------------------------------------------------------------------- */

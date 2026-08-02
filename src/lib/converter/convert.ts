@@ -402,6 +402,12 @@ function assembleJson(input: AssembleInput): ExtensionJson {
     videos,
     subtitles,
     audio,
+    settings: {
+      configurable: analysis.settings.configurable,
+      preferences: analysis.settings.preferences,
+      domainPreferenceKeys: analysis.settings.domainPreferenceKeys,
+      availableDomains: analysis.settings.availableDomains,
+    },
     rawAnalysis,
   };
 }

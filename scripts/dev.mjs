@@ -14,25 +14,66 @@
  *    4. Exits with the child's exit code.
  * ============================================================================
  */
-import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { spawn, exec } from "node:child_process";
+import { createWriteStream, existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const PORT = process.env.PORT || "3000";
 const LOG_FILE = "dev.log";
+const URL = `http://localhost:${PORT}`;
+
+// Resolve the next binary directly from node_modules/.bin so we don't rely on
+// the shell PATH (which can be missing when launched detached / on Windows).
+const repoRoot = process.cwd();
+const isWin = process.platform === "win32";
+const nextBin = join(
+  repoRoot,
+  "node_modules",
+  ".bin",
+  isWin ? "next.CMD" : "next",
+);
+const nextCmd = existsSync(nextBin) ? nextBin : "next";
 
 // Truncate the log file at start (fresh log each run).
 const log = createWriteStream(LOG_FILE, { flags: "w" });
 
 const startTime = new Date().toISOString();
 log.write(`[dev.mjs] Starting next dev on port ${PORT} at ${startTime}\n`);
+log.write(`[dev.mjs] next binary: ${nextCmd}\n`);
 process.stdout.write(`\n  Starting next dev on port ${PORT}...\n\n`);
 
-// Spawn next via the shell so node_modules/.bin/next is found on every OS.
-const child = spawn("next", ["dev", "-p", PORT], {
+// Spawn next. Use shell:true only when falling back to the bare "next" name
+// (so the OS resolves it via PATH); when we have an absolute path we spawn
+// directly for reliability.
+const useShell = nextCmd === "next";
+const child = spawn(nextCmd, ["dev", "-p", PORT], {
   stdio: ["inherit", "pipe", "pipe"],
-  shell: true,
+  shell: useShell,
   env: process.env,
+  cwd: repoRoot,
 });
+
+let browserOpened = false;
+
+/** Open the default browser to the dev URL (cross-platform). */
+function openBrowser() {
+  if (browserOpened) return;
+  browserOpened = true;
+  const cmd =
+    process.platform === "win32"
+      ? `start "" "${URL}"`
+      : process.platform === "darwin"
+        ? `open "${URL}"`
+        : `xdg-open "${URL}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      // Non-fatal — just inform the user.
+      process.stdout.write(`\n  (Could not auto-open browser: ${err.message})\n  Open manually: ${URL}\n\n`);
+    } else {
+      process.stdout.write(`\n  Opening ${URL} in your browser...\n\n`);
+    }
+  });
+}
 
 /** Write a chunk to both the terminal and the log file. */
 function tee(data, stream) {
@@ -45,6 +86,14 @@ function tee(data, stream) {
     log.write(data);
   } catch {
     /* ignore log write errors */
+  }
+  // Detect the "Ready" signal and open the browser once.
+  if (!browserOpened) {
+    const text = data.toString();
+    if (text.includes("Ready in") || text.includes("Local:") || /GET \/ 200/.test(text)) {
+      // Small delay so the server is fully accepting connections.
+      setTimeout(openBrowser, 600);
+    }
   }
 }
 

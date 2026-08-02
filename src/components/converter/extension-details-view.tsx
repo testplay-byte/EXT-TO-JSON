@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Hash,
   Loader2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { getExtension } from "@/lib/api";
 import type { ExtensionJson } from "@/lib/converter/types";
@@ -110,7 +111,7 @@ export default function ExtensionDetailsView({
         </div>
         <div className="flex items-center gap-2">
           <HealthBadge status={json.health.status} score={json.health.score} />
-          <Button size="sm" onClick={() => onTestInPlayground(json.meta.packageName)}>
+          <Button size="sm" onClick={() => onTestInPlayground(extensionId)}>
             <FlaskConical className="h-4 w-4" />
             Test in Playground
           </Button>
@@ -365,6 +366,84 @@ export default function ExtensionDetailsView({
           </div>
         </ConfigSection>
       </div>
+
+      {/* Extension settings (preferences) */}
+      {json.settings.configurable && (
+        <ConfigSection
+          icon={SlidersHorizontal}
+          title="Extension settings"
+          description="User-configurable preferences detected in the source (ConfigurableAnimeSource). The playground lets you change these."
+        >
+          {json.settings.preferences.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Source is marked configurable, but no preference constants were
+              found in a readable form.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {json.settings.preferences.map((p, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5",
+                    p.isDomainPreference
+                      ? "border-[var(--accent-teal)]/30 bg-[var(--accent-teal-soft)]"
+                      : "border-border bg-[var(--surface)]",
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold flex items-center gap-1.5">
+                      {p.title}
+                      {p.isDomainPreference && (
+                        <Badge variant="outline" className="text-[10px] text-[var(--accent-teal)] border-[var(--accent-teal)]/30">
+                          domain
+                        </Badge>
+                      )}
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                      {p.key} · {p.type}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-w-full">
+                    {p.entries && p.entries.length > 0 ? (
+                      p.entries.map((e, j) => (
+                        <Badge
+                          key={j}
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px]",
+                            e === (p.default as string) && "ring-1 ring-[var(--accent-indigo)]",
+                          )}
+                        >
+                          {e}
+                        </Badge>
+                      ))
+                    ) : p.type === "switch" ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {p.default ? "on" : "off"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] font-mono">
+                        {String(p.default ?? "—")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {json.settings.availableDomains.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-xs text-muted-foreground">Available domains:</span>
+                  {json.settings.availableDomains.map((d) => (
+                    <Badge key={d} variant="outline" className="text-[10px] font-mono">
+                      {d}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </ConfigSection>
+      )}
 
       {/* Raw analysis (collapsible) */}
       <Collapsible>

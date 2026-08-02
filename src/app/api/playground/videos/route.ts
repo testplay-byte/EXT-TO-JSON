@@ -3,7 +3,7 @@
  * Body: { extensionId, url, serverName? }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { loadExtensionJson } from "@/lib/converter/persist";
+import { loadEffectiveExtension } from "@/lib/playground/load-effective";
 import { resolveVideos } from "@/lib/playground/videos";
 import { z } from "zod";
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const ext = loadExtensionJson(parsed.extensionId);
+  const ext = loadEffectiveExtension(parsed.extensionId);
   if (!ext) {
     return NextResponse.json({ error: "Extension not found" }, { status: 404 });
   }

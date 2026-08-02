@@ -1,8 +1,10 @@
 /**
  * toolchain.ts — Locate and verify the apktool + jadx decompilation tools.
  *
- * The tools live in <repo>/tools/. On first run the Windows launcher (and the
- * dev setup script) download them; here we just resolve + verify.
+ * Platform-aware: on Windows the jadx launcher is `tools/bin/jadx.bat`;
+ * on macOS/Linux it is `tools/bin/jadx`. Node's execFile/spawn cannot find
+ * `jadx` (no extension) on Windows without shell:true, so we pick the right
+ * file and invoke with shell:true for the .bat case.
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -15,6 +17,8 @@ export interface ToolchainPaths {
   apktoolJar: string;
   jadxBin: string;
   javaBin: string;
+  /** True when the jadx launcher is a .bat (Windows). Affects spawn options. */
+  jadxBinIsBat: boolean;
 }
 
 export interface ToolchainVersions {
@@ -23,16 +27,21 @@ export interface ToolchainVersions {
   java: string;
 }
 
+const IS_WIN = process.platform === "win32";
+
 async function run(
   cmd: string,
   args: string[],
   timeoutMs = 60000,
+  shell = false,
 ): Promise<string> {
   try {
     const { stdout, stderr } = await execFileP(cmd, args, {
       encoding: "utf8",
       timeout: timeoutMs,
       maxBuffer: 5 * 1024 * 1024,
+      shell,
+      windowsVerbatimArguments: !shell,
     });
     return (stdout || stderr).trim();
   } catch (err) {
@@ -43,28 +52,35 @@ async function run(
   }
 }
 
-/** Resolve tool paths relative to the repo root (process.cwd()). */
+/**
+ * Resolve tool paths relative to the repo root (process.cwd()).
+ * Picks `jadx.bat` on Windows, `jadx` elsewhere.
+ */
 export function resolveToolchain(): ToolchainPaths {
   const repoRoot = process.cwd();
   const apktoolJar = join(repoRoot, "tools", "apktool.jar");
+
+  const jadxBat = join(repoRoot, "tools", "bin", "jadx.bat");
   const jadxBin = join(repoRoot, "tools", "bin", "jadx");
+  const useBat = IS_WIN && existsSync(jadxBat);
+  const jadxBinResolved = useBat ? jadxBat : jadxBin;
 
   if (!existsSync(apktoolJar)) {
     throw new Error(
       `apktool.jar not found at ${apktoolJar}. Run the launcher / setup script to download the toolchain.`,
     );
   }
-  if (!existsSync(jadxBin)) {
+  if (!existsSync(jadxBinResolved)) {
     throw new Error(
-      `jadx not found at ${jadxBin}. Run the launcher / setup script to download the toolchain.`,
+      `jadx not found at ${jadxBinResolved}. Run the launcher / setup script to download the toolchain.`,
     );
   }
 
   const javaBin = process.env.JAVA_HOME
-    ? join(process.env.JAVA_HOME, "bin", "java")
+    ? join(process.env.JAVA_HOME, "bin", IS_WIN ? "java.exe" : "java")
     : "java";
 
-  return { apktoolJar, jadxBin, javaBin };
+  return { apktoolJar, jadxBin: jadxBinResolved, javaBin, jadxBinIsBat: useBat };
 }
 
 /** Verify each tool runs and capture its version string. */
@@ -74,7 +90,7 @@ export async function verifyToolchain(
   const [javaRaw, apktoolRaw, jadxRaw] = await Promise.all([
     run(paths.javaBin, ["-version"], 30000),
     run(paths.javaBin, ["-jar", paths.apktoolJar, "--version"], 60000),
-    run(paths.jadxBin, ["--version"], 60000),
+    run(paths.jadxBin, ["--version"], 60000, paths.jadxBinIsBat),
   ]);
   const java = javaRaw.split("\n")[0].replace(/"/g, "");
   return {

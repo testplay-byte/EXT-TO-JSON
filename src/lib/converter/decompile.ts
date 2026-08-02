@@ -48,6 +48,7 @@ export async function decompileApk(
   mkdirSync(outDir, { recursive: true });
 
   // jadx -d <out> --no-res --show-bad-code --threads-count 4 <apk>
+  // On Windows the launcher is jadx.bat, which must be spawned with shell:true.
   await execFileP(
     tools.jadxBin,
     [
@@ -59,7 +60,12 @@ export async function decompileApk(
       "4",
       apkPath,
     ],
-    { timeout: 300000, maxBuffer: 20 * 1024 * 1024 },
+    {
+      timeout: 300000,
+      maxBuffer: 20 * 1024 * 1024,
+      shell: tools.jadxBinIsBat,
+      windowsVerbatimArguments: !tools.jadxBinIsBat,
+    },
   );
 
   if (!existsSync(outDir)) {

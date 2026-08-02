@@ -58,6 +58,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import { BrowseGrid } from "./browse-grid";
+import { ExtensionSettingsDialog } from "./settings-dialog";
+import { SlidersHorizontal } from "lucide-react";
 import { DetailsPanel } from "./details-panel";
 import { VideosSection } from "./videos-section";
 import {
@@ -93,6 +95,7 @@ export default function PlaygroundView({
   const [selectedEpisodeUrl, setSelectedEpisodeUrl] = React.useState<
     string | undefined
   >();
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const extsQ = useQuery({
     queryKey: ["extensions"],
@@ -237,6 +240,17 @@ export default function PlaygroundView({
                     NSFW
                   </Badge>
                 )}
+                {ext?.settings?.configurable && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-full"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    Settings
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -355,6 +369,13 @@ export default function PlaygroundView({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Extension settings dialog */}
+      <ExtensionSettingsDialog
+        extensionId={selectedExtId}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
     </div>
   );
 }

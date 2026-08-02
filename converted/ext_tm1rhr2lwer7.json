@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "converter": {
     "version": "1.0.0",
-    "convertedAt": "2026-08-02T14:03:05.151Z",
-    "durationMs": 9880,
+    "convertedAt": "2026-08-02T16:09:02.128Z",
+    "durationMs": 9450,
     "toolchain": {
       "apktool": "2.9.3",
       "jadx": "1.4.7",
@@ -255,9 +255,15 @@
     "tracks": [],
     "note": "Audio track references detected; playground will surface any Video.audioTracks."
   },
+  "settings": {
+    "configurable": true,
+    "preferences": [],
+    "domainPreferenceKeys": [],
+    "availableDomains": []
+  },
   "rawAnalysis": {
-    "decompiledPath": "work/job-1785679375271/jadx-out",
-    "sourceClassFile": "work/job-1785679375271/jadx-out/sources/eu/kanade/tachiyomi/animeextension/all/jellyfin/Jellyfin.java",
+    "decompiledPath": "work/job-1785686932680/jadx-out",
+    "sourceClassFile": "work/job-1785686932680/jadx-out/sources/eu/kanade/tachiyomi/animeextension/all/jellyfin/Jellyfin.java",
     "candidateClasses": [
       "Jellyfin"
     ],
@@ -469,6 +475,7 @@
       "Scanned 365 .java files from jadx output.",
       "Found 1 candidate source class(es): Jellyfin (AnimeHttpSource, score=13)",
       "Manifest hint '.JellyfinFactory' did not match any candidate; using top-scored Jellyfin.",
+      "Parsed 0 preference(s) from setupPreferenceScreen.",
       "Detected 11 overridden methods.",
       "Extracted 0 selectors, 5 request URLs, 0 filters, 0 extractors."
     ]
