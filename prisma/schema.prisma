@@ -1,0 +1,47 @@
+// EXT-TO-JSON database schema
+// Converted extensions are persisted here as a cache. The canonical artifact is
+// the on-disk JSON file under /converted (synced to GitHub), but this DB powers
+// the extensions library listing and quick lookups.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Extension {
+  id             String   @id @default(cuid())
+  // Identity
+  name           String
+  lang           String
+  baseUrl        String
+  packageName    String   @unique
+  sourceType     String
+  sourceClassName String
+  isNsfw         Boolean  @default(false)
+  // APK provenance
+  apkFileName    String
+  apkSha256      String
+  apkVersionCode Int      @default(0)
+  apkVersionName String   @default("")
+  // Health
+  healthScore    Int      @default(0)
+  healthStatus   String   @default("warning")
+  healthSummary  String   @default("")
+  // Capabilities (JSON string)
+  capabilities   String
+  // The full ExtensionJson document (stringified)
+  json           String
+  // Optional source icon (data url)
+  iconDataUrl    String?
+  // File path of the saved json on disk (under /converted)
+  jsonFilePath   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([lang])
+  @@index([healthStatus])
+}

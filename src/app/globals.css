@@ -1,0 +1,329 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ============================================================================
+ *  WARM CANVAS DESIGN SYSTEM
+ *  Warm, approachable, functional. No pure white / pure gray backgrounds.
+ *  Light = warm beige canvas. Dark = warm dark grey canvas.
+ *  Accents: indigo (primary), violet (secondary), teal (success),
+ *  amber (warning), rose (danger).
+ * ============================================================================
+ */
+
+@theme inline {
+  /* shadcn aliases -> warm tokens */
+  --color-background: var(--canvas);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text-primary);
+
+  --color-primary: var(--accent-indigo);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-alt);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-alt);
+  --color-muted-foreground: var(--text-secondary);
+  --color-accent: var(--surface-alt);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--accent-danger);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent-indigo);
+
+  --color-sidebar: var(--surface);
+  --color-sidebar-foreground: var(--text-primary);
+  --color-sidebar-primary: var(--accent-indigo);
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: var(--surface-alt);
+  --color-sidebar-accent-foreground: var(--text-primary);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--accent-indigo);
+
+  --color-chart-1: var(--accent-indigo);
+  --color-chart-2: var(--accent-teal);
+  --color-chart-3: var(--accent-secondary);
+  --color-chart-4: var(--accent-amber);
+  --color-chart-5: var(--accent-danger);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+:root {
+  /* ---- Light theme: warm beige canvas ---- */
+  --canvas: #f2eee8;
+  --surface: #fffdfa;
+  --surface-alt: #f9f5f0;
+  --surface-elevated: #fffdf9;
+  --border: #e8e2da;
+  --border-strong: #d9d2c7;
+  --text-primary: #1a1a1a;
+  --text-secondary: #8a8784;
+  --text-tertiary: #b3b0ab;
+
+  --accent-indigo: #6366f1;
+  --accent-indigo-soft: #eef0fe;
+  --accent-secondary: #8b5cf6;
+  --accent-secondary-soft: #f3effe;
+  --accent-teal: #14b8a6;
+  --accent-teal-soft: #e6f7f5;
+  --accent-amber: #f59e0b;
+  --accent-amber-soft: #fdf3e0;
+  --accent-danger: #ff6b6b;
+  --accent-danger-soft: #ffe9e9;
+
+  --shadow: 0 2px 20px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-focus: 0 0 0 4px rgba(99, 102, 241, 0.15);
+
+  --radius: 16px;
+}
+
+.dark {
+  /* ---- Dark theme: warm dark grey canvas ---- */
+  --canvas: #18181a;
+  --surface: #242426;
+  --surface-alt: #2e2e30;
+  --surface-elevated: #2a2a2c;
+  --border: #3d3d40;
+  --border-strong: #4a4a4d;
+  --text-primary: #ede9e3;
+  --text-secondary: #a8a6a2;
+  --text-tertiary: #7a7874;
+
+  --accent-indigo: #818cf8;
+  --accent-indigo-soft: #2a2d44;
+  --accent-secondary: #a78bfa;
+  --accent-secondary-soft: #322a44;
+  --accent-teal: #2dd4bf;
+  --accent-teal-soft: #1f3633;
+  --accent-amber: #fbbf24;
+  --accent-amber-soft: #3f3417;
+  --accent-danger: #fb7185;
+  --accent-danger-soft: #3f2226;
+
+  --shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.7);
+  --shadow-focus: 0 0 0 4px rgba(129, 140, 248, 0.2);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar — warm themed */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+    background-clip: padding-box;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  /* Focus visible ring */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: 8px;
+  }
+}
+
+/* ============================================================================
+ *  Animations
+ * ============================================================================ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(20, 184, 166, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease both;
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+.animate-scale-in {
+  animation: scale-in 0.25s ease both;
+}
+.animate-pulse-soft {
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s infinite;
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+/* Stagger helpers */
+.stagger > * {
+  opacity: 0;
+  animation: fade-in-up 0.4s ease forwards;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 0.28s;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 0.32s;
+}
+
+/* Utility surfaces */
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.surface-elevated {
+  box-shadow: var(--shadow-elevated);
+}
+.lift-on-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lift-on-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Subtle gradient text for headings */
+.text-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--accent-indigo),
+    var(--accent-secondary)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
