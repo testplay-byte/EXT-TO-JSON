@@ -297,3 +297,20 @@ Work Log:
 
 Stage Summary:
 - Anikoto converts at 100% health. Playground browse + details work end-to-end with real data. The analyzer now properly handles decompiled Java (obfuscated multisrc, method-call preferences, HttpUrl.Builder patterns).
+
+---
+Task ID: 19
+Agent: main (orchestrator)
+Task: Fix 404/403/Cloudflare errors + live preview crash + reference AnymeX.
+
+Work Log:
+- Checked RyanYuuki/AnymeX: it uses a JS runtime bridge (anymex_extension_runtime_bridge) to run original extension JS code directly, inheriting the extension's own anti-bot handling. Our architecture (JSON + server-side fetch) cannot bypass Cloudflare this way.
+- Root cause of 404/403: Anikoto (and all 6 its domains) are behind Cloudflare. Server-side fetches get a JS challenge page (HTTP 200 but HTML is "Just a moment..."). The playground was silently returning empty results or showing generic "HTTP 404" without explaining why.
+- Fix in fetch.ts: sends full browser-like headers (Referer, Accept, Accept-Language, sec-fetch-*, sec-ch-ua). Added Cloudflare detection — returns blocked=true with a clear error explaining the site requires JS/CAPTCHA solving that the playground cannot automate, plus actionable suggestions (try different domain via Settings, visit in browser first). Added explainStatus() with plain-language messages for 403/404/429/500/502/503.
+- shared.tsx FetchAlert: shows "Site blocked the request" for 403/Cloudflare, "Page not found (404)" for 404s, with a hint to try the Settings button.
+- convert.ts: source.headers now includes Referer: <baseUrl>/ (Aniyomi extensions add this in headersBuilder).
+- Live preview crash fix: db.ts had log: ['query'] which spammed every SQL query to dev.log → memory pressure → dev server instability. Changed to log: ['error', 'warn'].
+- Agent Browser verified: playground renders without crash, shows "Anikoto", shows the Cloudflare block message with the helpful hint, Settings button visible. Lint clean. Pushed to GitHub (ffe59fc).
+
+Stage Summary:
+- 404/403/Cloudflare errors now surface clearly with actionable explanations. Live preview no longer crashes (Prisma logging fixed). The user sees honest feedback instead of silent failures.
