@@ -212,3 +212,24 @@ Work Log:
 
 Stage Summary:
 - All 6 user issues fixed + verified. START.bat now works on re-run after Java install.
+
+---
+Task ID: 15
+Agent: main (orchestrator)
+Task: Fix 'bun: command not found: tee' on Windows — cross-platform dev script.
+
+Work Log:
+- Root cause: package.json "dev" script was "next dev -p 3000 2>&1 | tee dev.log" — the `tee` command is Unix-only and doesn't exist on Windows. So `bun run dev` (and `npm run dev`) failed on Windows with "command not found: tee".
+- Created scripts/dev.mjs: a cross-platform Node.js launcher that:
+  - Spawns `next dev -p 3000` via shell:true (finds node_modules/.bin/next on every OS)
+  - Tees stdout+stderr to BOTH the console (live output) AND dev.log (for app log reading)
+  - Forwards SIGINT/SIGTERM to the child for clean shutdown
+  - Handles spawn errors gracefully
+- Changed package.json "dev" from the Unix pipeline to "node scripts/dev.mjs" — works identically on Windows, macOS, Linux, and with both bun and npm.
+- Also fixed "start" script (had same | tee + Unix NODE_ENV=production syntax) → "node scripts/start.mjs" (cross-platform production launcher that sets NODE_ENV in the env object, not as a shell prefix).
+- Simplified "build" script (removed Unix `cp -r` commands) → just "next build".
+- Verified: killed old dev server, started with new script (node scripts/dev.mjs), server responds HTTP 200, dev.log writes correctly (Next.js banner + compile logs present), app renders fully (Agent Browser confirmed all views), lint clean.
+- Pushed to GitHub.
+
+Stage Summary:
+- Windows launcher now completes fully: git → node → java → clone → deps → toolchain → db → dev server starts without errors.
