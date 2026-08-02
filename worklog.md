@@ -144,3 +144,28 @@ Stage Summary:
 - No source code in src/ was modified.
 - Documentation is grounded in actual code: every API route, every schema field, every pipeline stage, every extractor id, every design token references the real implementation.
 - Next: GitHub push, Agent Browser smoke test of the running app.
+
+---
+Task ID: 11-12
+Agent: main (orchestrator)
+Task: GitHub push + Agent Browser self-verification.
+
+Work Log:
+- Configured allowedDevOrigins in next.config.ts (silences preview-panel cross-origin dev warning).
+- Updated .gitignore to exclude tools/, work/, upload/, test-apks/, db/*.db, .zscripts/, Caddyfile, tests/ (sandbox infra) — keeps the user-facing repo lean.
+- Committed 127 files + pushed to https://github.com/testplay-byte/EXT-TO-JSON (main). Sample converted jellyfin JSON pushed to /converted.
+- Agent Browser verification (mandatory):
+  - App renders at / : sidebar (Converter/Playground/Settings + Collapse), top bar (title + GitHub + theme toggle), converter view (dropzone + import JSON + extensions library). Title correct.
+  - Golden path: POSTed real jellyfin APK to /api/convert -> job polled queued→decompiling→done (health 75% warning). Extension appeared in library with View/Test/Delete.
+  - View dialog: opens, shows "Aniyomi: Jellyfin Warning · 75%" + JSON viewer (11,646 bytes) + Copy.
+  - Playground: Test button opens playground, auto-selects the extension, Browse/Search tabs + Popular/Latest toggle render. "No items" honest empty state (Jellyfin has no reachable baseUrl). POST /api/playground/browse returned 200 (live fetch attempted, errors structured not crashed).
+  - Settings: toolchain status renders — Java openjdk 21.0.11, apktool 2.9.3, jadx 1.4.7, "Ready to convert" badge. Appearance + theme toggle.
+  - Theme toggle: dark mode works (CSS-driven icon swap).
+  - Responsive: 375px mobile -> sidebar collapses to hamburger drawer; 1440px desktop -> floating rounded sidebar.
+  - Sticky footer: verified via eval — footerBottom 884 ≈ viewportHeight 900, isAtViewportBottom true. Pushes down naturally on long content.
+  - No runtime errors in dev.log (only the expected prisma queries + cross-origin dev note).
+- Final lint: clean (0 errors, 0 warnings).
+
+Stage Summary:
+- PROJECT COMPLETE & VERIFIED. Repo live at https://github.com/testplay-byte/EXT-TO-JSON.
+- All 12 todos done. App is interactive and runnable in the preview panel.
