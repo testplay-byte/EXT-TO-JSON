@@ -194,3 +194,21 @@ Work Log:
 
 Stage Summary:
 - All 4 user requests done + verified + pushed to GitHub.
+
+---
+Task ID: 14
+Agent: main (orchestrator)
+Task: Fix 6 user-reported issues: batch & bug, brand gradient, dark Test button, extension details page, collapse placement, health clarity.
+
+Work Log:
+- START.bat critical fix: the '& was unexpected at this time' error was caused by a malformed `2^>&1 2^>^&1` double-redirection in the Java version capture line (line 228). The first `2^>&1` had an unescaped `&` which became a command separator inside the for-loop. This only triggered when `java` was actually found (2nd run after install) — exactly matching the user's experience. Fixed to clean `2^>^&1`. Also replaced the fragile `echo ... & goto :tools_done` (line 438) with a proper if-block.
+- Dark-mode primary button contrast: root cause was `--color-primary-foreground: #ffffff` hardcoded while `--color-primary: var(--text-primary)` becomes light in dark mode (#ede9e3). Result: light bg + white text = invisible Test button. Fixed by making primary-foreground theme-aware via `--primary-fg` token (#ffffff in light, #18181a in dark). Dark mode now has an inverted premium look (light button + dark text).
+- Brand gradient: replaced ugly green+blue `from-indigo to-teal` gradient with a clean solid `bg-[var(--text-primary)]` in both the sidebar logo and the playground header icon.
+- Collapse button: moved from sidebar header to the very bottom of the sidebar. Now a full-width bordered button (icon + 'Collapse' label; icon-only when collapsed). Verified: toggles 240px↔68px, nearBottom=true.
+- New Extension Details page (extension-details-view.tsx): clicking an extension card now opens a full details view instead of a JSON-only dialog. Shows: health banner, metadata grid, capabilities, conversion checks breakdown, browse endpoints (popular/latest/search), filters, details+episodes config, video servers with extractor badges, subtitles, audio, collapsible raw analysis (method overrides + analyzer notes), and full JSON viewer. Has 'Test in Playground' + Back buttons.
+- Extension library cards redesigned: whole card clickable to open details; clean 'Open details →' affordance with chevron + delete icon. Removed old View/Test buttons and the dialog.
+- Health badge clarity: label changed from 'Warning' to 'Partial' (clearer); added native tooltip explaining score+status ('Conversion health: 92% — Partial. Most of the APK was converted, but some checks found gaps...').
+- Agent Browser verified all 6 fixes. Lint clean. Pushed to GitHub.
+
+Stage Summary:
+- All 6 user issues fixed + verified. START.bat now works on re-run after Java install.
