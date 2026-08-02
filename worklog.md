@@ -263,3 +263,18 @@ Work Log:
 
 Stage Summary:
 - Windows conversion now works (jadx.bat fix). Auto-open browser. Rich processing animation. Full extension settings extraction + configuration. Playground honours saved domain. All pushed.
+
+---
+Task ID: 17
+Agent: main (orchestrator)
+Task: Fix 'ext is not defined' crash + baseUrl='Dub' extraction bug.
+
+Work Log:
+- Fixed PlaygroundView crash: the Settings button referenced `ext?.settings?.configurable` but the full extension JSON variable is `extJson` (not `ext`). Changed to `extJson?.settings?.configurable`.
+- Fixed baseUrl extraction producing non-URL values: extractProperty's third regex (assignRe) was too greedy — matched `baseUrl = "..."` anywhere in source, including decompiled fragments where a non-URL got assigned. Removed the greedy fallback; now only matches typed field initializers (val/var/String baseUrl = ...) and `this.baseUrl = ...` (decompiled Java).
+- New extractBaseUrl() validates the extracted value starts with http(s). Non-URL values (like "Dub" or "The server address") are discarded so the fallback chain (settings default → domain list → URL scan) finds a real URL instead.
+- settings.ts: detectFallbackBaseUrl now resolves template strings like "https://${domainEntries.first()}" by substituting the first domain, and scans for https:// URL literals as a last resort.
+- Agent Browser verified: playground loads without crash, extension auto-selects, Settings dialog opens, graceful "no configurable settings" message for Jellyfin. Lint clean. Pushed to GitHub (e963493).
+
+Stage Summary:
+- Two bugs fixed: the runtime crash and the wrong baseUrl. Playground now works reliably.
