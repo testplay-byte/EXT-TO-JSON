@@ -249,16 +249,27 @@ function extractProperty(
   );
   const gm = getterRe.exec(src);
   if (gm) return gm[1];
-  // field initializer: baseUrl = "..."  or  String baseUrl = "..."
+  // field initializer with type/modifier prefix: val baseUrl = "..." / String baseUrl = "..."
   const fieldRe = new RegExp(
     `(?:String|boolean|int|long|private|public|protected|final|static|val|var)\\s+${propName}\\s*=\\s*"([^"]*)"`,
   );
   const fm = fieldRe.exec(src);
   if (fm) return fm[1];
-  // assignment anywhere: baseUrl = "..."
-  const assignRe = new RegExp(`\\b${propName}\\s*=\\s*"([^"]*)"`);
-  const am = assignRe.exec(src);
-  if (am) return am[1];
+  // this.field assignment: this.baseUrl = "..."  (decompiled Java style)
+  const thisRe = new RegExp(`this\\.${propName}\\s*=\\s*"([^"]*)"`);
+  const tm = thisRe.exec(src);
+  if (tm) return tm[1];
+  return undefined;
+}
+
+/**
+ * Extract the baseUrl with URL validation. A non-URL value (e.g. a placeholder
+ * like "The server address" or a mis-extracted name) is discarded so the
+ * fallback chain (settings default → domain list → URL scan) can take over.
+ */
+function extractBaseUrl(src: string): string | undefined {
+  const raw = extractProperty(src, "baseUrl");
+  if (raw && /^https?:\/\//.test(raw)) return raw;
   return undefined;
 }
 
@@ -485,7 +496,7 @@ export function analyzeSource(
   }
 
   // Properties
-  let baseUrl = extractProperty(src, "baseUrl");
+  let baseUrl = extractBaseUrl(src);
   const lang = extractProperty(src, "lang");
   const name = extractProperty(src, "name");
   const versionId = extractIntProperty(src, "versionId");

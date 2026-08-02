@@ -240,7 +240,7 @@ export default function PlaygroundView({
                     NSFW
                   </Badge>
                 )}
-                {ext?.settings?.configurable && (
+                {extJson?.settings?.configurable && (
                   <Button
                     variant="outline"
                     size="sm"

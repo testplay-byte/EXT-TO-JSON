@@ -296,11 +296,40 @@ function detectFallbackBaseUrl(
     }
   }
 
-  // 3. defaultBaseUrl = "https://..."
-  const dbRe = /defaultBaseUrl\s*=\s*"(https?:\/\/[^"]+)"/;
+  // 3. defaultBaseUrl = "https://..."  (may be a template like "https://${domainEntries.first()}")
+  const dbRe = /defaultBaseUrl\s*=\s*"(https?:\/\/[^"]*)"/;
   const dbM = dbRe.exec(src);
   if (dbM) {
-    if (!domains.includes(dbM[1])) domains.push(dbM[1]);
+    let dbUrl = dbM[1];
+    // Resolve template placeholders like ${domainEntries.first()}
+    if (dbUrl.includes("${") && domains.length > 0) {
+      // Use the first resolved domain's host.
+      try {
+        const firstDomain = domains[0].replace(/^https?:\/\//, "");
+        dbUrl = dbUrl.replace(/\$\{[^}]*domainEntries[^}]*\}/, firstDomain);
+        dbUrl = dbUrl.replace(/\$\{[^}]*\}/, firstDomain);
+      } catch {
+        /* leave as-is */
+      }
+    }
+    if (/^https?:\/\//.test(dbUrl) && !domains.includes(dbUrl)) {
+      domains.unshift(dbUrl);
+    }
+  }
+
+  // 4. Also scan for "https://" string literals that look like site roots.
+  const urlRe = /"(https:\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'\s]*)"/gi;
+  let um: RegExpExecArray | null;
+  while ((um = urlRe.exec(src)) !== null) {
+    const u = um[1];
+    if (
+      !/(\/ajax\/|\/api\/|\.js|\.css|\.png|\.jpg|github\.com|googleapis|jsdelivr)/.test(
+        u,
+      ) &&
+      !domains.includes(u)
+    ) {
+      domains.push(u);
+    }
   }
 
   // Pick the first https URL as the fallback.
