@@ -278,3 +278,22 @@ Work Log:
 
 Stage Summary:
 - Two bugs fixed: the runtime crash and the wrong baseUrl. Playground now works reliably.
+
+---
+Task ID: 18
+Agent: main (orchestrator)
+Task: Deep-analyze Anikoto APK manually + rewrite analyzer for decompiled Java + verify playground end-to-end.
+
+Work Log:
+- Downloaded the user-uploaded Anikoto APK from the repo. Decompiled it manually with apktool+jadx to understand the real structure.
+- KEY FINDINGS: The real Anikoto class extends q0 (obfuscated AnikotoTheme multisrc). The entry subclass calls super("en","Anikoto",listOf("anikototv.to",...),listOf("HD-1",...)). getBaseUrl() returns preferences.getString("preferred_domain", this.f) where this.f="https://"+first(domainEntries). setupPreferenceScreen uses setKey()/setTitle() method calls (decompiled Java), not Kotlin PREF_* constants. Request URLs use HttpUrl.Builder.addPathSegment()/addQueryParameter() not string concatenation. animeDetailsParse uses selectFirst("h1.title, h2.title") etc.
+- Created src/lib/converter/decompiled.ts with: findEntryClass, parseSuperCall, parsePreferenceScreen (setKey/setTitle method-call parser), buildUrlFromBuilderPattern (addPathSegment+addQueryParameter).
+- Rewrote analyzer: finds entry subclass, parses super() args for real name/lang/domains; extractBaseUrl validates http(s); analyzeSettingsDecompiled uses decompiled-Java preference parser + entry domain injection; fallback baseUrl = first entry domain; extracts animeDetailsParse selectors; sourceClassName prefers manifest entry class name.
+- buildDetailsConfig maps selectors by content keyword (title/genre/status/artist) instead of positional.
+- Playground fixes: resolveUrl substitutes {baseUrl} placeholder; readField title uses text not thumbnailAttr (was the bug causing empty titles); shows extension NAME not URL.
+- VERIFIED with real Anikoto APK: 100% health (12/12 checks). name=Anikoto, lang=en, baseUrl=https://anikototv.to. popular.url={baseUrl}/most-viewed?page={page} returns 30 items with real titles (Solo Leveling, One Piece, Sakamoto Days...). Details: title/genre=Action/status=COMPLETED all correct. 8 preferences detected with 6 domain entries. Agent Browser: browse popular shows results, click entry opens details panel — all rendering correctly.
+- Episodes: the /ajax/episode/list/ endpoint requires JS-rendered vrf encryption (documented limitation; selector is correct but page is SPA-driven).
+- Pushed to GitHub (01e00a0).
+
+Stage Summary:
+- Anikoto converts at 100% health. Playground browse + details work end-to-end with real data. The analyzer now properly handles decompiled Java (obfuscated multisrc, method-call preferences, HttpUrl.Builder patterns).
