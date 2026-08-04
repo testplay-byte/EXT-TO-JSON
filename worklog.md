@@ -369,3 +369,29 @@ Work Log:
 
 Stage Summary:
 - Windows EPERM fixed. URL templates are clean. Settings are properly detected with correct defaults, entries, and domain flags. All pushed to GitHub.
+
+---
+Task ID: 22
+Agent: main (orchestrator)
+Task: Handle both APK architectures (v14.1 multisrc + v16.9 self-contained) + copy-logs + detailed errors.
+
+Work Log:
+- Downloaded both APKs (v14.1 = 111KB, v16.9 = 268KB). Manually decompiled both with apktool+jadx.
+- KEY FINDING: The two APKs have completely different architectures:
+  - v14.1: Anikoto extends q0 (obfuscated AnikotoTheme multisrc). super("en","Anikoto",listOf(domains),listOf(servers)). URL via HttpUrl.Builder. Settings inline with setKey/setTitle method calls.
+  - v16.9: Anikoto extends AnimeHttpSource directly. baseUrl = "https://anikototv.to" (field). URL via string concatenation (RequestsKt.GET$default(baseUrl + "/most-viewed?page=" + i, ...)). Settings delegated to separate AnikotoSettings helper class with PREF_* constants.
+- Fixed buildUrlTemplate: rewrote to extract string-concatenation chain from RequestsKt.GET$default(baseUrl + "/path?page=" + i, ...) correctly, stopping at first comma. No more page={i, getHeaders(), ...} garbage.
+- Fixed helper class delegation: when setupPreferenceScreen delegates to getSettings().setupPreferenceScreen(screen), detects the helper class (AnikotoSettings), finds its file, parses ITS setupPreferenceScreen + PREF_* constants.
+- Fixed constant resolution: readSetCall resolves PREF_* constant references (PREF_QUALITY_KEY -> "pref_quality"). resolveSetArrayCall handles mixed arrays with constant refs (new String[]{PREF_QUALITY_DEFAULT, "480", "360"} -> ["720", "480", "360"]).
+- Fixed category splitting: parsePreferenceScreen splits on BOTH preferenceScreen.addPreference AND preferenceCategory.addPreference.
+- Fixed boolean defaults: resolves "bool" local variable from "Boolean bool = Boolean.TRUE" -> "true".
+- Fixed isDomain detection: precise — "hoster_exclusion" no longer false-matches as domain.
+- Added Copy Log button to FetchAlert: copies detailed error log (URL, status, error, warnings) to clipboard for sharing. Shows exact URL tried + HTTP status + actionable hints.
+- VERIFIED with BOTH real APKs:
+  - v14.1: 100% health, 8 prefs, popular.url = {baseUrl}/most-viewed?page={page}
+  - v16.9: 92% health, 14 prefs (4 categories: Playback, Servers, Episode metadata, Smart Search), all with correct defaults + entries
+  - Both: clean URL templates, no garbage
+- Lint clean. Pushed to GitHub (ec70bb6).
+
+Stage Summary:
+- Both APK architectures now handled. Settings fully extracted from both inline + helper-class patterns. URL templates clean. Copy-logs feature added for debugging.
