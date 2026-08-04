@@ -191,17 +191,32 @@ function parsePrefBlock(
       entryValues?: string[];
       defaultValue?: string;
       isDomain?: boolean;
+      category?: string;
     }
   | null {
   // Detect type
   let type = "unknown";
   if (/MultiSelectListPreference/.test(block)) type = "multiselect";
-  else if (/SwitchPreference|SwitchCompatPreference/.test(block)) type = "switch";
+  else if (/SwitchPreference|SwitchCompatPreference|CheckBoxPreference/.test(block))
+    type = "switch";
   else if (/EditTextPreference/.test(block)) type = "text";
   else if (/ListPreference/.test(block)) type = "list";
+  else if (/PreferenceCategory/.test(block)) type = "category";
+  else if (/Preference\b/.test(block) && !/PreferenceScreen/.test(block))
+    type = "info";
 
   const key = readSetCall(block, "setKey")?.[0];
   const title = readSetCall(block, "setTitle")?.[0];
+  // For category preferences, the title is the category name; key may be absent.
+  if (type === "category") {
+    return {
+      key: key || `(category:${title || "untitled"})`,
+      title: title || "(untitled category)",
+      type,
+      isDomain: false,
+      category: title,
+    };
+  }
   if (!key || !title) return null;
 
   // setEntries may take a string[] literal OR a field reference like this.c.toArray(...)
@@ -213,11 +228,43 @@ function parsePrefBlock(
   );
   const def = readSetCall(block, "setDefaultValue");
 
-  const isDomain =
-    /domain|base_?url|mirror|host/i.test(key) ||
-    /domain|base\s*url|mirror|host/i.test(title);
+  // Try to resolve field-reference defaults (e.g. setDefaultValue(this.f))
+  let defaultValue = def?.[0];
+  if (defaultValue && /^this\.\w+$/.test(defaultValue)) {
+    // Look up the field's initializer in the source.
+    const fieldName = defaultValue.replace(/^this\./, "");
+    const resolved = resolveFieldInitializer(fieldName, sourceClassSrc);
+    if (resolved) defaultValue = resolved;
+  }
 
-  return { key, title, type, entries, entryValues, defaultValue: def?.[0], isDomain };
+  // isDomain: only true for preferences that control the base URL / domain.
+  // Be precise — "hoster_exclusion" contains "host" but is NOT a domain pref.
+  const isDomain =
+    /^(pref_)?domain|base_?url|^domain$|preferred_domain/i.test(key) ||
+    /preferred domain|base\s*url/i.test(title);
+
+  return { key, title, type, entries, entryValues, defaultValue, isDomain };
+}
+
+/**
+ * Try to resolve a field initializer like `this.f = "https://..."` from the
+ * source class. Returns the string value if found.
+ */
+function resolveFieldInitializer(
+  fieldName: string,
+  src: string,
+): string | undefined {
+  // this.fieldName = "value"
+  const re = new RegExp(`this\\.${fieldName}\\s*=\\s*"([^"]*)"`);
+  const m = re.exec(src);
+  if (m) return m[1];
+  // this.fieldName = "https://" + something  (concatenation — return the prefix)
+  const concatRe = new RegExp(
+    `this\\.${fieldName}\\s*=\\s*"(https?://[^"]*)"`,
+  );
+  const cm = concatRe.exec(src);
+  if (cm) return cm[1];
+  return undefined;
 }
 
 /** Read the string args of a `setXxx("...")` call. */
@@ -244,9 +291,11 @@ function readSetCall(block: string, method: string): string[] | undefined {
 }
 
 /**
- * Resolve a setEntries/setEntryValues call. If the arg is a string[] literal,
- * parse it. If it's a field reference like `this.c.toArray(new String[0])`,
- * try to resolve the field's initializer from the source class.
+ * Resolve a setEntries/setEntryValues call. Handles:
+ *  - Array literals: { "a", "b" } or new String[]{ "a", "b" }
+ *  - Field refs: (CharSequence[]) this.c.toArray(new String[0])
+ *  - Static constant refs: S, U, W, X (single-letter static final String[] fields)
+ *  - Local variable refs: strArr (where `String[] strArr = S;` earlier in block)
  */
 function resolveSetArrayCall(
   block: string,
@@ -265,23 +314,82 @@ function resolveSetArrayCall(
     if (depth === 0) break;
     i++;
   }
-  const inner = block.slice(start, i).trim();
+  let inner = block.slice(start, i).trim();
+
+  // Strip casts: (CharSequence[]) expr  ->  expr
+  inner = inner.replace(/^\(\s*CharSequence\[\]\s*\)\s*/, "");
+  // Strip (String[]) casts
+  inner = inner.replace(/^\(\s*String\[\]\s*\)\s*/, "");
 
   // Case 1: array literal { "a", "b" }
   if (inner.startsWith("{") || inner.startsWith("new String[")) {
     return extractStringLiterals(inner);
   }
-  // Case 2: cast (CharSequence[]) this.c.toArray(new String[0])
+
+  // Case 2: field ref: this.c.toArray(new String[0])
   const fieldMatch = /this\.(\w+)\.toArray/.exec(inner);
   if (fieldMatch) {
-    const field = fieldMatch[1];
-    // The field is assigned in the constructor from a super() arg (list).
-    // We can't easily resolve it here without the entry-class super args,
-    // so the caller (analyzeSettings) handles domain list injection.
+    // The field is assigned in the constructor from a super() arg.
+    // The caller (analyzeSettingsDecompiled) handles domain list injection.
     return undefined;
   }
-  // Case 3: direct string[] variable (rare)
-  return extractStringLiterals(inner);
+
+  // Case 3: static constant ref (single letter like S, U, W, X, or multi-letter)
+  // Try to find: static final String[] NAME = { "a", "b" };
+  // or:          String[] NAME = { "a", "b" };
+  // or:          NAME = strArr;  (where strArr is a local assigned from a constant)
+  if (/^[A-Za-z_]\w*$/.test(inner)) {
+    // First, check if it's a local variable assigned earlier in the block.
+    const localVarRe = new RegExp(
+      `String\\[\\]\\s+${inner}\\s*=\\s*([A-Za-z_]\\w*)`,
+    );
+    const lvm = localVarRe.exec(block);
+    if (lvm) {
+      // Recurse: resolve the variable it was assigned from.
+      const constName = lvm[1];
+      const resolved = resolveStaticArray(constName, sourceClassSrc);
+      if (resolved) return resolved;
+    }
+    // Try as a static/class constant.
+    const resolved = resolveStaticArray(inner, sourceClassSrc);
+    if (resolved) return resolved;
+  }
+
+  // Case 4: try to extract any string literals from the expression.
+  const literals = extractStringLiterals(inner);
+  return literals.length > 0 ? literals : undefined;
+}
+
+/** Resolve a static final String[] constant from the source class. */
+function resolveStaticArray(
+  name: string,
+  src: string,
+): string[] | undefined {
+  // static final String[] NAME = { "a", "b" };
+  // String[] NAME = { "a", "b" };
+  // private static final String[] NAME = { "a", "b" };
+  const re = new RegExp(
+    `(?:static\\s+)?(?:final\\s+)?String\\[\\]\\s+${name}\\s*=\\s*\\{([^}]*)\\}`,
+  );
+  const m = re.exec(src);
+  if (m) {
+    const literals = extractStringLiterals("{" + m[1] + "}");
+    if (literals.length > 0) return literals;
+  }
+  // NAME = strArr;  (static block assignment)
+  const assignRe = new RegExp(`\\b${name}\\s*=\\s*([A-Za-z_]\\w*)\\s*[;]`);
+  const am = assignRe.exec(src);
+  if (am && am[1] !== name) {
+    // The RHS is another variable — try to resolve it as an array literal.
+    const arrRe = new RegExp(
+      `String\\[\\]\\s+${am[1]}\\s*=\\s*\\{([^}]*)\\}`,
+    );
+    const arrm = arrRe.exec(src);
+    if (arrm) {
+      return extractStringLiterals("{" + arrm[1] + "}");
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -304,22 +412,35 @@ export function buildUrlFromBuilderPattern(
   while ((m = pathRe.exec(methodBody)) !== null) {
     if (m[1]) pathSegs.push(m[1]);
   }
-  // Collect addQueryParameter("name", ...)
+  // Collect addQueryParameter("name", ...) — only capture the NAME, not the
+  // value expression. The value in decompiled Java often contains nested
+  // parens (e.g. String.valueOf(i)) which break naive regex matching. Since
+  // we only need the name to build the placeholder, we match just up to the
+  // comma after the name string.
   const queryParts: string[] = [];
-  const qRe = /addQueryParameter\s*\(\s*"([^"]+)"\s*,\s*([^)]+)\)/g;
+  const qRe = /addQueryParameter\s*\(\s*"([^"]+)"\s*,/g;
   while ((m = qRe.exec(methodBody)) !== null) {
     const name = m[1];
-    const valExpr = m[2].trim();
-    // The query param NAME is the most reliable signal:
-    //   "page" -> {page}, "keyword"/"query"/"q" -> {query}, "vrf" -> {vrf}
+    // Map by name: "page" -> {page}, "keyword"/"query" -> {query}, etc.
     if (name === "page" || /^p$/.test(name)) {
       queryParts.push(`${name}={page}`);
     } else if (/keyword|query|^q$|search/.test(name)) {
       queryParts.push(`${name}={query}`);
-    } else if (/^"([^"]*)"$/.test(valExpr)) {
-      queryParts.push(`${name}=${valExpr.replace(/^"|"$/g, "")}`);
     } else {
-      // Value is a variable (e.g. str2, C0(str)); use a placeholder named after the param.
+      // Value is a variable or method call — use a placeholder named after the param.
+      queryParts.push(`${name}={${name}}`);
+    }
+  }
+
+  // Also detect addEncodedQueryParameter("name", ...) — same pattern.
+  const eqRe = /addEncodedQueryParameter\s*\(\s*"([^"]+)"\s*,/g;
+  while ((m = eqRe.exec(methodBody)) !== null) {
+    const name = m[1];
+    if (name === "page" || /^p$/.test(name)) {
+      queryParts.push(`${name}={page}`);
+    } else if (/keyword|query|^q$|search/.test(name)) {
+      queryParts.push(`${name}={query}`);
+    } else {
       queryParts.push(`${name}={${name}}`);
     }
   }

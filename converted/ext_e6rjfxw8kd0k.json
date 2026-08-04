@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "converter": {
     "version": "1.0.0",
-    "convertedAt": "2026-08-02T17:30:39.568Z",
-    "durationMs": 5022,
+    "convertedAt": "2026-08-04T12:43:53.901Z",
+    "durationMs": 5296,
     "toolchain": {
       "apktool": "2.9.3",
       "jadx": "1.4.7",
@@ -292,15 +292,21 @@
           "https://anikoto.net",
           "https://anikototv.se"
         ],
-        "default": "this.f",
+        "default": "https://anikototv.to",
         "isDomainPreference": true
       },
       {
         "key": "preferred_title_lang",
         "title": "Preferred Title Language",
         "type": "list",
-        "entries": [],
-        "entryValues": [],
+        "entries": [
+          "English",
+          "Japanese"
+        ],
+        "entryValues": [
+          "English",
+          "Japanese"
+        ],
         "default": "English",
         "isDomainPreference": false
       },
@@ -308,26 +314,31 @@
         "key": "preferred_quality",
         "title": "Preferred Quality",
         "type": "list",
-        "entries": [],
-        "entryValues": [],
-        "default": "V",
+        "entries": [
+          "1080p",
+          "720p",
+          "480p",
+          "360p"
+        ],
+        "entryValues": [
+          "1080",
+          "720",
+          "480",
+          "360"
+        ],
+        "default": "1080",
         "isDomainPreference": false
       },
       {
         "key": "preferred_server",
         "title": "Preferred Server",
         "type": "list",
-        "entries": [],
-        "entryValues": [],
-        "default": "str",
         "isDomainPreference": false
       },
       {
         "key": "preferred_language",
         "title": "Preferred Type",
         "type": "list",
-        "entries": [],
-        "entryValues": [],
         "default": "Sub",
         "isDomainPreference": false
       },
@@ -335,8 +346,16 @@
         "key": "score_position",
         "title": "Score Display Position",
         "type": "list",
-        "entries": [],
-        "entryValues": [],
+        "entries": [
+          "Top of description",
+          "Bottom of description",
+          "Don't show"
+        ],
+        "entryValues": [
+          "top",
+          "bottom",
+          "none"
+        ],
         "default": "top",
         "isDomainPreference": false
       },
@@ -344,24 +363,17 @@
         "key": "hoster_exclusion",
         "title": "Exclude Servers",
         "type": "multiselect",
-        "entries": [],
-        "entryValues": [],
-        "default": "SetsKt.emptySet()",
-        "isDomainPreference": true
+        "isDomainPreference": false
       },
       {
         "key": "type_exclusion",
         "title": "Exclude Types",
         "type": "multiselect",
-        "entries": [],
-        "entryValues": [],
-        "default": "SetsKt.emptySet()",
         "isDomainPreference": false
       }
     ],
     "domainPreferenceKeys": [
-      "preferred_domain",
-      "hoster_exclusion"
+      "preferred_domain"
     ],
     "availableDomains": [
       "https://anikototv.to",
@@ -373,8 +385,8 @@
     ]
   },
   "rawAnalysis": {
-    "decompiledPath": "work/job-1785691834547/jadx-out",
-    "sourceClassFile": "work/job-1785691834547/jadx-out/sources/defpackage/q0.java",
+    "decompiledPath": "work/job-1785847428605/jadx-out",
+    "sourceClassFile": "work/job-1785847428605/jadx-out/sources/defpackage/q0.java",
     "candidateClasses": [
       "q0"
     ],
@@ -529,6 +541,7 @@
       "Entry lang (from super args): en",
       "Entry domains: anikototv.to, anikoto.bz, anikoto.cz, anikoto.me, anikoto.net, anikototv.se",
       "Injected entry domains into \"preferred_domain\" preference.",
+      "Set domain default to first domain: https://anikototv.to",
       "Decompiled preference parser found 8 preference(s).",
       "Fallback base URL: https://anikototv.to",
       "baseUrl is preference-driven; using fallback \"https://anikototv.to\" from settings.",

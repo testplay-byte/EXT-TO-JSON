@@ -34,6 +34,7 @@ import {
   parseSuperCall,
   parsePreferenceScreen,
   buildUrlFromBuilderPattern,
+  extractStringLiterals,
 } from "./decompiled";
 
 const BASE_CLASSES: Record<string, SourceType> = {
@@ -691,6 +692,39 @@ export function analyzeSource(
  * available domains + domain preference entries when the source uses
  * `this.c.toArray(...)` (field reference we can't statically resolve).
  */
+/**
+ * Try to resolve a single-letter static constant default value from the source.
+ * Handles patterns like:
+ *   V = strArr[0];   where strArr = {"1080", "720", ...}
+ *   X = "top";
+ */
+function resolveStaticConstantDefault(
+  name: string,
+  src: string,
+): string | undefined {
+  // X = "literal"
+  const litRe = new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`);
+  const lm = litRe.exec(src);
+  if (lm) return lm[1];
+
+  // X = strArr[0]  or  X = someArr[0]
+  const arrIdxRe = new RegExp(`\\b${name}\\s*=\\s*(\\w+)\\[0\\]`);
+  const am = arrIdxRe.exec(src);
+  if (am) {
+    const arrName = am[1];
+    // Find the array definition: String[] arrName = { "a", "b", ... };
+    const defRe = new RegExp(
+      `String\\[\\]\\s+${arrName}\\s*=\\s*\\{([^}]*)\\}`,
+    );
+    const dm = defRe.exec(src);
+    if (dm) {
+      const arr = extractStringLiterals("{" + dm[1] + "}");
+      if (arr.length > 0) return arr[0];
+    }
+  }
+  return undefined;
+}
+
 function analyzeSettingsDecompiled(
   src: string,
   entryDomains: string[],
@@ -728,18 +762,90 @@ function analyzeSettingsDecompiled(
     prefs = parsePreferenceScreen(body, src);
   }
 
-  // Inject entryDomains into the domain preference (entries + entryValues)
+  // Inject entryDomains into the domain preference (entries + entryValues + default)
   // when the source referenced `this.c.toArray(...)` and we couldn't resolve it.
   if (entryDomains.length > 0) {
     const domainPref = prefs.find((p) => p.isDomain);
-    if (domainPref && (!domainPref.entries || domainPref.entries.length === 0)) {
-      domainPref.entries = entryDomains;
-      domainPref.entryValues = entryDomains.map((d) =>
-        /^https?:\/\//.test(d) ? d : `https://${d}`,
-      );
-      notes.push(
-        `Injected entry domains into "${domainPref.key}" preference.`,
-      );
+    if (domainPref) {
+      if (!domainPref.entries || domainPref.entries.length === 0) {
+        domainPref.entries = entryDomains;
+        notes.push(`Injected entry domains into "${domainPref.key}" preference.`);
+      }
+      if (!domainPref.entryValues || domainPref.entryValues.length === 0) {
+        domainPref.entryValues = entryDomains.map((d) =>
+          /^https?:\/\//.test(d) ? d : `https://${d}`,
+        );
+      }
+      // Fix the default: setDefaultValue(this.f) resolves to just "https://"
+      // (the prefix of "https://" + first). Use the first domain URL instead.
+      const firstDomainUrl = /^https?:\/\//.test(entryDomains[0])
+        ? entryDomains[0]
+        : `https://${entryDomains[0]}`;
+      if (
+        !domainPref.defaultValue ||
+        domainPref.defaultValue === "https://" ||
+        /^this\./.test(domainPref.defaultValue)
+      ) {
+        domainPref.defaultValue = firstDomainUrl;
+        notes.push(`Set domain default to first domain: ${firstDomainUrl}`);
+      }
+    }
+  }
+
+  // Clean up truncated/garbage defaults for non-domain preferences.
+  for (const p of prefs) {
+    if (p.isDomain) continue;
+
+    // Handle SetsKt.emptySet() / emptySet() for multiselect defaults.
+    if (p.defaultValue && /emptySet|SetsKt\.emptySet/.test(p.defaultValue)) {
+      p.defaultValue = undefined; // will be treated as empty array
+      continue;
+    }
+
+    // Try to resolve single-letter static constants (e.g. V = strArr[0] = "1080")
+    if (
+      p.defaultValue &&
+      /^[A-Za-z]$/.test(p.defaultValue) &&
+      p.defaultValue !== "V" // V is a known obfuscated constant name, handle below
+    ) {
+      const resolved = resolveStaticConstantDefault(p.defaultValue, src);
+      if (resolved) {
+        p.defaultValue = resolved;
+        continue;
+      }
+    }
+
+    // Handle "V" specifically (common in AnikotoTheme for quality default)
+    if (p.defaultValue === "V") {
+      // V = strArr[0] where strArr = {"1080", "720", ...}
+      // Try to find the array and get element [0].
+      const strArrRe = /String\[\]\s+strArr\s*=\s*\{([^}]*)\}/;
+      const sam = strArrRe.exec(src);
+      if (sam) {
+        const arr = extractStringLiterals("{" + sam[1] + "}");
+        if (arr.length > 0) {
+          p.defaultValue = arr[0];
+          continue;
+        }
+      }
+    }
+
+    // Handle this.X field refs and short lowercase fragments (unresolved).
+    if (
+      p.defaultValue &&
+      (/^this\./.test(p.defaultValue) ||
+        p.defaultValue === "str" ||
+        p.defaultValue === "strArr" ||
+        (p.defaultValue.length <= 2 && /^[a-z]+$/.test(p.defaultValue)))
+    ) {
+      // Use the first entry value as default if available.
+      if (p.entryValues && p.entryValues.length > 0) {
+        p.defaultValue = p.entryValues[0];
+      } else if (p.entries && p.entries.length > 0) {
+        p.defaultValue = p.entries[0];
+      } else {
+        p.defaultValue = undefined;
+      }
     }
   }
 

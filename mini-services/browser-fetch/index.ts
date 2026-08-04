@@ -29,9 +29,24 @@
  */
 
 import { chromium, type BrowserContext, type Page } from "playwright";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { mkdirSync } from "node:fs";
 
 const PORT = 3030;
-const PROFILE_DIR = new URL("./browser-profile/", import.meta.url).pathname;
+// Resolve the profile directory using fileURLToPath (NOT .pathname) because
+// on Windows, URL.pathname returns "/C:/Users/..." with a leading slash that
+// causes EPERM errors when Playwright tries to mkdir it.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const PROFILE_DIR = join(__dirname, "browser-profile");
+
+// Ensure the profile directory exists before Playwright tries to use it.
+try {
+  mkdirSync(PROFILE_DIR, { recursive: true });
+} catch {
+  /* may already exist */
+}
 
 /** The persistent browser context. Recreated when switching headless/headed. */
 let context: BrowserContext | null = null;
@@ -48,21 +63,43 @@ let activeFetchCount = 0;
 // ---------------------------------------------------------------------------
 
 async function launchContext(headless: boolean): Promise<BrowserContext> {
-  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless,
-    viewport: { width: 1280, height: 720 },
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    locale: "en-US",
-    timezoneId: "America/New_York",
-    args: [
-      "--disable-blink-features=AutomationControlled",
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-    ],
-    ignoreDefaultArgs: ["--enable-automation"],
-  });
+  let ctx: BrowserContext;
+  try {
+    ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+      headless,
+      viewport: { width: 1280, height: 720 },
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      locale: "en-US",
+      timezoneId: "America/New_York",
+      args: [
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage", // avoids /dev/shm issues on low-memory systems
+      ],
+      ignoreDefaultArgs: ["--enable-automation"],
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Provide a helpful error message for common failures.
+    if (/EPERM|EACCES|permission/i.test(msg)) {
+      throw new Error(
+        `Cannot create browser profile at ${PROFILE_DIR}. ` +
+        `Permission denied. Make sure the folder is writable and no antivirus ` +
+        `is blocking it. Original error: ${msg}`,
+      );
+    }
+    if (/Executable doesn't exist|browserType/i.test(msg)) {
+      throw new Error(
+        `Playwright Chromium is not installed. Run: ` +
+        `cd mini-services/browser-fetch && bunx playwright install chromium. ` +
+        `Original error: ${msg}`,
+      );
+    }
+    throw e;
+  }
   contextHeadless = headless;
   return ctx;
 }
