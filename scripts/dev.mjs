@@ -1,52 +1,75 @@
 /**
  * ============================================================================
- *  scripts/dev.mjs — Cross-platform dev server launcher with logging.
+ *  scripts/dev.mjs — Cross-platform dev launcher with logging.
  *  ----------------------------------------------------------------------------
- *  Replaces the Unix-only `next dev -p 3000 2>&1 | tee dev.log` pipeline so
- *  that `bun run dev` and `npm run dev` work identically on Windows, macOS,
- *  and Linux.
+ *  Starts TWO services:
+ *    1. The browser-fetch service (port 3030) — Playwright-backed fetcher
+ *       with cookie persistence + captcha solving.
+ *    2. The Next.js dev server (port 3000) — the main web app.
  *
- *  What it does:
- *    1. Spawns `next dev -p 3000` (found via node_modules/.bin).
- *    2. Streams stdout + stderr to BOTH the console (so you see live output)
- *       AND dev.log (so the app can read its own server log).
- *    3. Forwards Ctrl+C / SIGTERM to the child so the server shuts down cleanly.
- *    4. Exits with the child's exit code.
+ *  Both services' output is teed to the console AND dev.log. The browser
+ *  auto-opens when the Next.js server is ready. Ctrl+C stops both.
  * ============================================================================
  */
 import { spawn, exec } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 const PORT = process.env.PORT || "3000";
 const LOG_FILE = "dev.log";
 const URL = `http://localhost:${PORT}`;
 
-// Resolve the next binary directly from node_modules/.bin so we don't rely on
-// the shell PATH (which can be missing when launched detached / on Windows).
 const repoRoot = process.cwd();
 const isWin = process.platform === "win32";
-const nextBin = join(
-  repoRoot,
-  "node_modules",
-  ".bin",
-  isWin ? "next.CMD" : "next",
-);
-const nextCmd = existsSync(nextBin) ? nextBin : "next";
 
 // Truncate the log file at start (fresh log each run).
 const log = createWriteStream(LOG_FILE, { flags: "w" });
 
 const startTime = new Date().toISOString();
-log.write(`[dev.mjs] Starting next dev on port ${PORT} at ${startTime}\n`);
-log.write(`[dev.mjs] next binary: ${nextCmd}\n`);
-process.stdout.write(`\n  Starting next dev on port ${PORT}...\n\n`);
+log.write(`[dev.mjs] Starting dev servers at ${startTime}\n`);
+process.stdout.write(`\n  Starting dev servers...\n\n`);
 
-// Spawn next. Use shell:true only when falling back to the bare "next" name
-// (so the OS resolves it via PATH); when we have an absolute path we spawn
-// directly for reliability.
+/** Write a chunk to both the terminal and the log file with a prefix. */
+function tee(data, stream, prefix) {
+  const text = data.toString();
+  for (const line of text.split("\n")) {
+    if (line.trim()) {
+      const prefixed = `[${prefix}] ${line}\n`;
+      try { stream.write(prefixed); } catch { /* */ }
+      try { log.write(prefixed); } catch { /* */ }
+    } else {
+      try { stream.write("\n"); } catch { /* */ }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  1. Start the browser-fetch service (port 3030)
+// ---------------------------------------------------------------------------
+const bfDir = join(repoRoot, "mini-services", "browser-fetch");
+const bfChild = spawn("bun", ["run", "index.ts"], {
+  stdio: ["ignore", "pipe", "pipe"],
+  cwd: bfDir,
+  env: process.env,
+});
+
+bfChild.stdout.on("data", (d) => tee(d, process.stdout, "browser-fetch"));
+bfChild.stderr.on("data", (d) => tee(d, process.stderr, "browser-fetch"));
+bfChild.on("error", (err) => {
+  process.stderr.write(`[dev.mjs] browser-fetch failed to start: ${err.message}\n`);
+});
+bfChild.on("exit", (code) => {
+  process.stdout.write(`[dev.mjs] browser-fetch exited (code ${code})\n`);
+});
+
+// ---------------------------------------------------------------------------
+//  2. Start the Next.js dev server (port 3000)
+// ---------------------------------------------------------------------------
+const nextBin = join(repoRoot, "node_modules", ".bin", isWin ? "next.CMD" : "next");
+const nextCmd = existsSync(nextBin) ? nextBin : "next";
 const useShell = nextCmd === "next";
-const child = spawn(nextCmd, ["dev", "-p", PORT], {
+
+const nextChild = spawn(nextCmd, ["dev", "-p", PORT], {
   stdio: ["inherit", "pipe", "pipe"],
   shell: useShell,
   env: process.env,
@@ -55,7 +78,6 @@ const child = spawn(nextCmd, ["dev", "-p", PORT], {
 
 let browserOpened = false;
 
-/** Open the default browser to the dev URL (cross-platform). */
 function openBrowser() {
   if (browserOpened) return;
   browserOpened = true;
@@ -67,7 +89,6 @@ function openBrowser() {
         : `xdg-open "${URL}"`;
   exec(cmd, (err) => {
     if (err) {
-      // Non-fatal — just inform the user.
       process.stdout.write(`\n  (Could not auto-open browser: ${err.message})\n  Open manually: ${URL}\n\n`);
     } else {
       process.stdout.write(`\n  Opening ${URL} in your browser...\n\n`);
@@ -75,32 +96,22 @@ function openBrowser() {
   });
 }
 
-/** Write a chunk to both the terminal and the log file. */
-function tee(data, stream) {
-  try {
-    stream.write(data);
-  } catch {
-    /* stream may be closed during shutdown */
-  }
-  try {
-    log.write(data);
-  } catch {
-    /* ignore log write errors */
-  }
-  // Detect the "Ready" signal and open the browser once.
+nextChild.stdout.on("data", (d) => {
+  try { process.stdout.write(d); } catch { /* */ }
+  try { log.write(d); } catch { /* */ }
   if (!browserOpened) {
-    const text = data.toString();
+    const text = d.toString();
     if (text.includes("Ready in") || text.includes("Local:") || /GET \/ 200/.test(text)) {
-      // Small delay so the server is fully accepting connections.
       setTimeout(openBrowser, 600);
     }
   }
-}
+});
+nextChild.stderr.on("data", (d) => {
+  try { process.stderr.write(d); } catch { /* */ }
+  try { log.write(d); } catch { /* */ }
+});
 
-child.stdout.on("data", (d) => tee(d, process.stdout));
-child.stderr.on("data", (d) => tee(d, process.stderr));
-
-child.on("error", (err) => {
+nextChild.on("error", (err) => {
   const msg = `[dev.mjs] Failed to start 'next': ${err.message}\n` +
     `Make sure dependencies are installed (run: bun install or npm install).\n`;
   process.stderr.write(msg);
@@ -109,14 +120,21 @@ child.on("error", (err) => {
   process.exit(1);
 });
 
-child.on("exit", (code, signal) => {
+nextChild.on("exit", (code, signal) => {
   const msg = `[dev.mjs] next dev exited — code ${code} signal ${signal}\n`;
   process.stdout.write(msg);
   log.write(msg);
+  // Also kill the browser-fetch service.
+  try { bfChild.kill("SIGTERM"); } catch { /* */ }
   log.end();
   process.exit(code ?? 1);
 });
 
-// Clean shutdown: forward signals to the child so Next.js can tear down.
-process.on("SIGINT", () => child.kill("SIGINT"));
-process.on("SIGTERM", () => child.kill("SIGTERM"));
+// Clean shutdown: forward signals to both children.
+function shutdown() {
+  try { nextChild.kill("SIGINT"); } catch { /* */ }
+  try { bfChild.kill("SIGTERM"); } catch { /* */ }
+  setTimeout(() => process.exit(0), 500);
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

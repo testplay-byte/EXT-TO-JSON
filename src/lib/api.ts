@@ -128,7 +128,7 @@ export interface BrowseResult {
   page: number;
   hasNextPage: boolean;
   nextPageUrl?: string;
-  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean };
+  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean; needsCaptcha?: boolean };
   warnings: string[];
 }
 export const pgBrowse = (extensionId: string, type: "popular" | "latest", page = 1) =>
@@ -158,7 +158,7 @@ export interface DetailsResult {
     status: string;
     extras: Record<string, string>;
   };
-  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean };
+  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean; needsCaptcha?: boolean };
   warnings: string[];
 }
 export const pgDetails = (extensionId: string, url: string) =>
@@ -176,7 +176,7 @@ export interface EpisodeItem {
 }
 export interface EpisodesResult {
   episodes: EpisodeItem[];
-  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean };
+  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean; needsCaptcha?: boolean };
   warnings: string[];
 }
 export const pgEpisodes = (extensionId: string, url: string) =>
@@ -209,7 +209,7 @@ export interface VideosResult {
   formats: string[];
   subtitleTracks: { url: string; lang: string; format?: string }[];
   audioTracks: { url: string; lang: string }[];
-  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean };
+  fetch: { ok: boolean; status: number; url: string; error?: string; blocked?: boolean; needsCaptcha?: boolean };
   warnings: string[];
 }
 export const pgVideos = (extensionId: string, url: string, serverName?: string) =>
@@ -217,3 +217,24 @@ export const pgVideos = (extensionId: string, url: string, serverName?: string) 
     method: "POST",
     body: JSON.stringify({ extensionId, url, serverName }),
   });
+
+/* ------------------------- Captcha solving ---------------------------- */
+export interface SolveCaptchaResult {
+  ok: boolean;
+  message: string;
+  cookiesSaved?: number;
+}
+export const solveCaptcha = (url: string) =>
+  jfetch<SolveCaptchaResult>("/api/playground/solve-captcha", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+
+/* --------------------- Browser-fetch service -------------------------- */
+export interface BrowserFetchStatus {
+  running: boolean;
+  headless?: boolean;
+  captchaInProgress?: boolean;
+}
+export const getBrowserFetchStatus = () =>
+  jfetch<BrowserFetchStatus>("/api/browser-fetch/status");

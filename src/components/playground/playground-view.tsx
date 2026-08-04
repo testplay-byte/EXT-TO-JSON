@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 
 import { BrowseGrid } from "./browse-grid";
 import { ExtensionSettingsDialog } from "./settings-dialog";
+import { CaptchaRequiredCard, BrowserFetchWarning } from "./captcha-card";
 import { SlidersHorizontal } from "lucide-react";
 import { DetailsPanel } from "./details-panel";
 import { VideosSection } from "./videos-section";
@@ -68,6 +69,7 @@ import {
   FetchAlert,
   WarningsAlert,
 } from "./shared";
+import { getBrowserFetchStatus } from "@/lib/api";
 
 export default function PlaygroundView({
   initialExtensionId,
@@ -166,6 +168,19 @@ export default function PlaygroundView({
     enabled:
       tab === "search" && !!selectedExtId && searchQuery.length > 0,
   });
+
+  // Check if the browser-fetch service is running.
+  const bfStatusQ = useQuery({
+    queryKey: ["bf-status"],
+    queryFn: getBrowserFetchStatus,
+    refetchInterval: 10000,
+  });
+  const bfRunning = bfStatusQ.data?.running ?? false;
+
+  // Detect captcha requirement from the active query.
+  const activeQ = tab === "browse" ? browseQ : searchQ;
+  const needsCaptcha = activeQ.data?.fetch?.needsCaptcha === true;
+  const captchaUrl = activeQ.data?.fetch?.url ?? extJson?.meta?.baseUrl ?? "";
 
   const onPickAnime = (item: BrowseItem) => {
     setSelectedAnime(item);
@@ -276,6 +291,21 @@ export default function PlaygroundView({
           )}
         </CardContent>
       </Card>
+
+      {/* Browser-fetch service warning */}
+      {!bfRunning && <BrowserFetchWarning />}
+
+      {/* Captcha required card */}
+      {needsCaptcha && (
+        <CaptchaRequiredCard
+          url={captchaUrl}
+          onSolved={() => {
+            // Refetch the active query after captcha is solved.
+            if (tab === "browse") browseQ.refetch();
+            else searchQ.refetch();
+          }}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs

@@ -420,6 +420,42 @@ echo  ^(To reinstall: delete the node_modules folder inside %REPO_DIR%^)
 :deps_done
 echo.
 
+
+REM ============================================================================
+REM  STEP 5b: Install browser-fetch service dependencies + Playwright Chromium
+REM ============================================================================
+echo  ------------------------------------------------------------
+echo   Installing browser-fetch service + Playwright Chromium...
+echo  ------------------------------------------------------------
+cd /d "%TARGET%\mini-services\browser-fetch"
+if "!HAS_BUN!"=="1" (
+    call bun install
+) else (
+    call npm install
+)
+if errorlevel 1 (
+    echo  [!] Browser-fetch service install failed - continuing anyway.
+    echo      The playground will show a warning if the service cant start.
+) else (
+    echo  [OK] Browser-fetch service dependencies installed.
+)
+
+echo  Installing Playwright Chromium ^(one-time, ~150MB^)...
+if "!HAS_BUN!"=="1" (
+    call bunx playwright install chromium
+) else (
+    call npx playwright install chromium
+)
+if errorlevel 1 (
+    echo  [!] Playwright Chromium install failed - continuing anyway.
+    echo      The captcha-solving feature needs Chromium.
+    echo      Install later: cd mini-services\browser-fetch ^&^& bunx playwright install chromium
+) else (
+    echo  [OK] Playwright Chromium installed.
+)
+echo.
+cd /d "%TARGET%"
+
 REM ============================================================================
 REM  STEP 6: Download decompilation toolchain (apktool + jadx)
 REM  Uses a flag-based pattern (no goto/labels inside parenthesized blocks,

@@ -314,3 +314,38 @@ Work Log:
 
 Stage Summary:
 - 404/403/Cloudflare errors now surface clearly with actionable explanations. Live preview no longer crashes (Prisma logging fixed). The user sees honest feedback instead of silent failures.
+
+---
+Task ID: 20
+Agent: main (orchestrator)
+Task: Browser-backed fetch service (Playwright) with Cloudflare bypass + captcha solving.
+
+Work Log:
+- Researched RyanYuuki/AnymeX: uses a JS runtime bridge + cloudflare_webview.dart (opens a real WebView for captcha solving, syncs cookies back). Validated the user's approach.
+- Installed Playwright 1.62.1 + Chromium in mini-services/browser-fetch/.
+- Created mini-services/browser-fetch/index.ts:
+  - Playwright launchPersistentContext (cookies auto-saved to disk, survive restarts)
+  - Headless mode for normal fetches (with anti-detection flags: --disable-blink-features=AutomationControlled, ignoreDefaultArgs --enable-automation)
+  - Headed mode for captcha solving (visible browser window for user to solve)
+  - Cloudflare challenge detection (title + body content)
+  - API: POST /fetch, POST /solve-captcha, GET /status, GET /cookie-status
+  - Port 3030, Bun.serve HTTP server
+- Updated src/lib/playground/fetch.ts: delegates all HTTP to the browser-fetch service. Added solveCaptcha() and checkBrowserFetchService() functions.
+- Added API routes: /api/playground/solve-captcha, /api/browser-fetch/status
+- Created src/components/playground/captcha-card.tsx: CaptchaRequiredCard (with "Solve Now" button) + BrowserFetchWarning (shown when service is down).
+- Updated playground-view.tsx: checks browser-fetch status, shows warning if down, shows captcha card when needsCaptcha is true, refetches after solving.
+- Updated scripts/dev.mjs: starts BOTH the browser-fetch service (port 3030) AND Next.js (port 3000) concurrently. Output prefixed with [browser-fetch] / [next].
+- Updated START.bat: Step 5b installs browser-fetch deps + Playwright Chromium (~150MB one-time download).
+- Updated .gitignore: excludes browser-profile/ and mini-service node_modules.
+- Updated docs/TROUBLESHOOTING.md: browser-fetch service, captcha solving, port 3030.
+
+VERIFIED END-TO-END:
+- Both services start successfully.
+- Browser-fetch service bypasses Cloudflare on Anikoto (headless Chromium with anti-detection flags).
+- Browse popular returns 30 real items with titles (Solo Leveling, One Piece, Sakamoto Days, Naruto...).
+- fetch.ok: True, needsCaptcha: False — Cloudflare is bypassed automatically!
+- The captcha-solving flow is ready for when sites need it (opens visible browser, user solves, cookies persist).
+- Lint clean.
+
+Stage Summary:
+- The playground now fetches pages through a real Chromium browser, bypassing Cloudflare. Cookies persist across restarts. When a captcha is needed, a visible browser opens for the user to solve. Everything starts with a single `bun run dev` or START.bat double-click.

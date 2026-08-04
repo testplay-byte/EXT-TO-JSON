@@ -444,3 +444,32 @@ default browser when the server is ready.
    [GitHub](https://github.com/testplay-byte/EXT-TO-JSON/issues) with the
    failing APK (if shareable), the produced JSON, and the exact error
    message.
+
+### Playground shows "Browser-fetch service not running"
+
+The playground needs the browser-fetch service (port 3030) to fetch pages
+through a real Chromium browser. It starts automatically with `bun run dev`.
+If it's not running:
+
+1. Stop the dev server (Ctrl+C).
+2. Make sure Playwright Chromium is installed:
+   `cd mini-services/browser-fetch && bunx playwright install chromium`
+3. Restart: `bun run dev` (or double-click START.bat).
+
+### Playground shows "Captcha required"
+
+The site is protected by Cloudflare. Click **Solve Now** — a browser window
+will open for you to solve the captcha. After solving, cookies are saved and
+the page reloads automatically. Subsequent requests will work without another
+captcha (until cookies expire).
+
+If the headless browser bypasses Cloudflare automatically (common), you won't
+see this card at all — the playground just works.
+
+### Port 3030 already in use
+
+If the browser-fetch service can't start because port 3030 is occupied:
+1. Stop all services (Ctrl+C).
+2. Kill any leftover processes: `pkill -f browser-fetch` (or close all
+   terminal windows).
+3. Restart: `bun run dev`.

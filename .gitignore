@@ -72,3 +72,7 @@ server.log
 Caddyfile
 # Sandbox test infra
 /tests/
+
+# Browser-fetch service profile (cookies, session data — never commit)
+/mini-services/browser-fetch/browser-profile/
+/mini-services/browser-fetch/node_modules/
