@@ -167,8 +167,9 @@ export function parsePreferenceScreen(
     isDomain?: boolean;
   }[] = [];
 
-  // Split the body into blocks ending at `preferenceScreen.addPreference(...)`.
-  const blocks = body.split(/preferenceScreen\.addPreference\s*\(/);
+  // Split the body into blocks ending at addPreference calls.
+  // Preferences can be added to preferenceScreen OR preferenceCategory.
+  const blocks = body.split(/(?:preferenceScreen|preferenceCategory\w*)\.addPreference\s*\(/);
   // The first chunk is anything before the first addPreference (skip it).
   for (let i = 1; i < blocks.length; i++) {
     const block = blocks[i - 1]; // the block BEFORE this addPreference call
@@ -205,8 +206,8 @@ function parsePrefBlock(
   else if (/Preference\b/.test(block) && !/PreferenceScreen/.test(block))
     type = "info";
 
-  const key = readSetCall(block, "setKey")?.[0];
-  const title = readSetCall(block, "setTitle")?.[0];
+  const key = readSetCall(block, "setKey", sourceClassSrc)?.[0];
+  const title = readSetCall(block, "setTitle", sourceClassSrc)?.[0];
   // For category preferences, the title is the category name; key may be absent.
   if (type === "category") {
     return {
@@ -226,7 +227,7 @@ function parsePrefBlock(
     "setEntryValues",
     sourceClassSrc,
   );
-  const def = readSetCall(block, "setDefaultValue");
+  const def = readSetCall(block, "setDefaultValue", sourceClassSrc);
 
   // Try to resolve field-reference defaults (e.g. setDefaultValue(this.f))
   let defaultValue = def?.[0];
@@ -267,8 +268,8 @@ function resolveFieldInitializer(
   return undefined;
 }
 
-/** Read the string args of a `setXxx("...")` call. */
-function readSetCall(block: string, method: string): string[] | undefined {
+/** Read the string args of a `setXxx("...")` call. Resolves PREF_* constants. */
+function readSetCall(block: string, method: string, sourceClassSrc?: string): string[] | undefined {
   const re = new RegExp(`\\.${method}\\s*\\(`, "g");
   const m = re.exec(block);
   if (!m) return undefined;
@@ -282,12 +283,41 @@ function readSetCall(block: string, method: string): string[] | undefined {
     if (depth === 0) break;
     i++;
   }
-  const inner = block.slice(start, i);
+  const inner = block.slice(start, i).trim();
   // If it's a string literal, unwrap it.
-  const sm = /^"((?:\\.|[^"\\])*)"\s*$/.exec(inner.trim());
+  const sm = /^"((?:\\.|[^"\\])*)"$/.exec(inner);
   if (sm) return [sm[1]];
+  // If it's a PREF_* constant reference, resolve it from the source.
+  if (sourceClassSrc && /^PREF_\w+$/.test(inner)) {
+    const resolved = resolveStringConstant(inner, sourceClassSrc);
+    if (resolved !== undefined) return [resolved];
+    // Check for boolean constant.
+    const boolVal = resolveBoolConstant(inner, sourceClassSrc);
+    if (boolVal !== undefined) return [boolVal.toString()];
+  }
+  // If it's a Boolean.TRUE / Boolean.FALSE literal.
+  if (inner === "Boolean.TRUE" || inner === "true") return ["true"];
+  if (inner === "Boolean.FALSE" || inner === "false") return ["false"];
   // Otherwise return the raw expression (may be a field ref).
-  return [inner.trim()];
+  return [inner];
+}
+
+/** Resolve a `static final String NAME = "value"` constant from source. */
+function resolveStringConstant(name: string, src: string): string | undefined {
+  const re = new RegExp(
+    `(?:static\\s+)?(?:final\\s+)?String\\s+${name}\\s*=\\s*"([^"]*)"`,
+  );
+  const m = re.exec(src);
+  return m?.[1];
+}
+
+/** Resolve a `static final boolean NAME = true/false` constant from source. */
+function resolveBoolConstant(name: string, src: string): boolean | undefined {
+  const re = new RegExp(
+    `(?:static\\s+)?(?:final\\s+)?boolean\\s+${name}\\s*=\\s*(true|false)`,
+  );
+  const m = re.exec(src);
+  return m ? m[1] === "true" : undefined;
 }
 
 /**
@@ -321,9 +351,34 @@ function resolveSetArrayCall(
   // Strip (String[]) casts
   inner = inner.replace(/^\(\s*String\[\]\s*\)\s*/, "");
 
-  // Case 1: array literal { "a", "b" }
+  // Case 1: array literal { "a", "b" } or new String[]{ "a", PREF_X, "b" }
   if (inner.startsWith("{") || inner.startsWith("new String[")) {
-    return extractStringLiterals(inner);
+    // First extract string literals.
+    const literals = extractStringLiterals(inner);
+    // If there are PREF_* constant references mixed in, resolve them.
+    // Pattern: new String[]{"a", PREF_X_DEFAULT, "b"} -> we need to resolve
+    // PREF_X_DEFAULT to its value and insert it in the right position.
+    const constRefs = inner.match(/PREF_\w+/g);
+    if (constRefs && sourceClassSrc) {
+      // Rebuild the array by splitting on commas and resolving each element.
+      const arrayBodyMatch = /\{([^}]*)\}/.exec(inner);
+      if (arrayBodyMatch) {
+        const elements = arrayBodyMatch[1].split(",");
+        const resolved: string[] = [];
+        for (const el of elements) {
+          const trimmed = el.trim();
+          if (/^"([^"]*)"$/.test(trimmed)) {
+            resolved.push(trimmed.replace(/^"|"$/g, ""));
+          } else if (/^PREF_\w+$/.test(trimmed)) {
+            const val = resolveStringConstant(trimmed, sourceClassSrc);
+            if (val !== undefined) resolved.push(val);
+            else resolved.push(trimmed); // keep as-is if unresolved
+          }
+        }
+        if (resolved.length > 0) return resolved;
+      }
+    }
+    return literals.length > 0 ? literals : undefined;
   }
 
   // Case 2: field ref: this.c.toArray(new String[0])

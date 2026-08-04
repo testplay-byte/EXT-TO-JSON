@@ -342,68 +342,131 @@ function extractJsoupSelectors(methodBody: string): string[] {
   return out;
 }
 
-/** Build a best-effort URL template from a request method body. */
+/**
+ * Build a best-effort URL template from a request method body.
+ *
+ * Handles two decompiled-Java patterns:
+ *  1. String concatenation: `RequestsKt.GET$default(baseUrl + "/most-viewed?page=" + i, ...)`
+ *     -> extract the concatenation chain, stop at the first comma (end of arg 1).
+ *  2. HttpUrl.Builder: handled separately by buildUrlFromBuilderPattern.
+ *
+ * Also handles the Kotlin-source pattern: `GET("$baseUrl/popular?page=$page")`.
+ */
 function buildUrlTemplate(
   methodBody: string,
   baseUrl: string | undefined,
 ): { template: string; literals: string[] } {
   const literals = extractStrings(methodBody);
-  // Heuristic: find a string literal that looks like a path "/..." or full URL
+
+  // Strategy: find the FIRST string literal that looks like a URL path or
+  // starts with "/" or contains "page=". Then reconstruct the concatenation
+  // chain from there, stopping at the first comma (which ends the method arg).
   const pathLike = literals.find(
     (s) =>
       s.startsWith("/") ||
       /^https?:\/\//.test(s) ||
-      s.includes("{") ||
       /\bpage\b/i.test(s) ||
-      s.includes("="),
+      s.includes("page=") ||
+      s.includes("?"),
   );
-  let template = "";
-  if (pathLike) {
-    if (/^https?:\/\//.test(pathLike)) {
-      template = pathLike;
-    } else if (baseUrl && pathLike.startsWith("/")) {
-      template = baseUrl + pathLike;
-    } else {
-      template = pathLike;
-    }
-  } else if (literals.length) {
-    template = literals[0];
+
+  if (!pathLike) {
+    return { template: literals[0] ?? "", literals };
   }
-  // Replace dynamic concatenation hints with placeholders.
-  // Common: baseUrl + "/popular?page=" + page  -> baseUrl + "/popular?page={page}"
-  // We look for the pattern: "..." + <ident>  and map ident -> placeholder.
-  const concatRe = /"([^"]*)"\s*\+\s*(\w+)/g;
-  let cm: RegExpExecArray | null;
-  let built = template;
-  if (methodBody.includes("+")) {
-    // Reconstruct the concatenation chain starting from the first string literal.
-    const firstStr = literals[0];
-    if (firstStr !== undefined) {
-      built = firstStr;
-      let rest = methodBody.slice(methodBody.indexOf(`"${firstStr}"`) + firstStr.length + 2);
-      const stepRe = /\s*\+\s*("?)([^"+]+)\1/g;
-      let sm: RegExpExecArray | null;
-      while ((sm = stepRe.exec(rest)) !== null) {
-        const isStr = sm[1] === '"';
-        const token = sm[2].trim();
-        if (isStr) {
-          built += token;
-        } else {
-          // identifier -> placeholder
-          const low = token.toLowerCase();
-          if (low.includes("page")) built += "{page}";
-          else if (low.includes("query") || low.includes("search") || low.includes("q"))
-            built += "{query}";
-          else if (low.includes("url")) built += "{animeUrl}";
-          else built += `{${token}}`;
+
+  // Find the position of this string literal in the method body.
+  const litIdx = methodBody.indexOf(`"${pathLike}"`);
+  if (litIdx === -1) {
+    return { template: pathLike, literals };
+  }
+
+  // Extract the concatenation chain starting from this string literal.
+  // Stop at the first comma that's at depth 0 (end of the method argument).
+  let i = litIdx + pathLike.length + 2; // skip past the closing quote
+  let built = pathLike;
+  let depth = 0;
+
+  while (i < methodBody.length) {
+    // Skip whitespace.
+    while (i < methodBody.length && /\s/.test(methodBody[i])) i++;
+
+    if (i >= methodBody.length) break;
+
+    const ch = methodBody[i];
+
+    // If we hit a comma at depth 0, the first argument is done.
+    if (ch === "," && depth === 0) break;
+    // If we hit a closing paren at depth 0, the method call is done.
+    if (ch === ")" && depth === 0) break;
+
+    if (ch === "+" || ch === "&") {
+      // Concatenation operator — skip it and look for the next operand.
+      i++;
+      while (i < methodBody.length && /\s/.test(methodBody[i])) i++;
+
+      if (i >= methodBody.length) break;
+
+      if (methodBody[i] === '"') {
+        // String literal — extract it.
+        let j = i + 1;
+        let str = "";
+        while (j < methodBody.length && methodBody[j] !== '"') {
+          if (methodBody[j] === "\\") str += methodBody[++j];
+          else str += methodBody[j];
+          j++;
         }
-        if (sm.index + sm[0].length >= rest.length) break;
+        built += str;
+        i = j + 1;
+      } else {
+        // Identifier or expression — extract until next operator/comma/paren.
+        let expr = "";
+        while (
+          i < methodBody.length &&
+          !/[\s,)+]/.test(methodBody[i])
+        ) {
+          if (methodBody[i] === "(") {
+            // Method call like String.valueOf(i) — skip the args.
+            depth++;
+            expr += methodBody[i];
+            i++;
+            while (i < methodBody.length && depth > 0) {
+              if (methodBody[i] === "(") depth++;
+              else if (methodBody[i] === ")") depth--;
+              expr += methodBody[i];
+              i++;
+            }
+            continue;
+          }
+          expr += methodBody[i];
+          i++;
+        }
+        // Map the identifier/expression to a placeholder.
+        const low = expr.toLowerCase();
+        if (low.includes("page") || low === "i" || low === "p") {
+          built += "{page}";
+        } else if (low.includes("query") || low.includes("search") || low.includes("str")) {
+          built += "{query}";
+        } else if (low.includes("url")) {
+          built += "{animeUrl}";
+        } else if (low.includes("baseurl") || low.includes("getbaseurl")) {
+          built = "{baseUrl}" + built;
+        } else {
+          built += `{${expr}}`;
+        }
       }
-      if (!/^https?:\/\//.test(built) && baseUrl && built.startsWith("/")) {
-        built = baseUrl + built;
-      }
+    } else {
+      // Unexpected character — stop.
+      break;
     }
   }
+
+  // If the template starts with a path (not a full URL), prefix with {baseUrl}.
+  if (!/^https?:\/\//.test(built) && built.startsWith("/")) {
+    built = "{baseUrl}" + built;
+  }
+  // If it contains getBaseUrl() reference, normalize to {baseUrl}.
+  built = built.replace(/getBaseUrl\(\)/g, "{baseUrl}");
+
   return { template: built, literals };
 }
 
@@ -540,7 +603,7 @@ export function analyzeSource(
   // Use the decompiled-Java preference parser (setKey/setTitle method calls)
   // for the preference list, then run the Kotlin-style analyzer for fallback
   // baseUrl detection.
-  const settings = analyzeSettingsDecompiled(src, entryDomains);
+  const settings = analyzeSettingsDecompiled(src, entryDomains, jadxOutDir);
   notes.push(...settings.notes);
   if (!baseUrl && settings.fallbackBaseUrl) {
     baseUrl = settings.fallbackBaseUrl;
@@ -725,9 +788,85 @@ function resolveStaticConstantDefault(
   return undefined;
 }
 
+/**
+ * Find a Java class file by simple name in the jadx output tree.
+ * Searches recursively for `<className>.java`.
+ */
+function findClassFile(jadxOutDir: string, className: string): string | null {
+  const simpleName = className.split(".").pop() ?? className;
+  const results = collectJavaFiles(jadxOutDir).filter((f) =>
+    f.split("/").pop()?.replace(/\.java$/, "") === simpleName,
+  );
+  return results[0] ?? null;
+}
+
+/**
+ * Scan for PREF_*_KEY constants and build minimal PreferenceDefs.
+ * Used as a fallback when the decompiled parser finds nothing.
+ */
+function scanConstantPrefs(
+  src: string,
+): { key: string; title: string; type: string; entries?: string[]; entryValues?: string[]; default?: string }[] {
+  const prefs: { key: string; title: string; type: string; entries?: string[]; entryValues?: string[]; default?: string }[] = [];
+  const keyRe = /(?:const\s+)?(?:static\s+)?(?:final\s+)?String\s+(PREF_\w+_KEY)\s*=\s*"([^"]*)"/g;
+  let m: RegExpExecArray | null;
+  const seen = new Set<string>();
+  while ((m = keyRe.exec(src)) !== null) {
+    const keyConst = m[1];
+    const keyVal = m[2];
+    if (seen.has(keyVal)) continue;
+    seen.add(keyVal);
+    const base = keyConst.replace(/_KEY$/, "");
+    const title = resolveConst(base + "_TITLE", src) ?? keyVal;
+    const def = resolveConst(base + "_DEFAULT", src);
+    const entries = resolveArrayConst(base + "_ENTRIES", src);
+    const entryValues = resolveArrayConst(base + "_VALUES", src);
+    // Also check for boolean defaults (SwitchPreference).
+    const boolDef = resolveBoolConst(base + "_DEFAULT", src);
+    const type = boolDef !== undefined ? "switch" : entries.length || entryValues.length ? "list" : "text";
+    prefs.push({
+      key: keyVal,
+      title,
+      type,
+      entries: entries.length ? entries : undefined,
+      entryValues: entryValues.length ? entryValues : undefined,
+      default: def ?? boolDef?.toString(),
+    });
+  }
+  return prefs;
+}
+
+function resolveConst(name: string, src: string): string | undefined {
+  const re = new RegExp(`(?:const\\s+)?(?:static\\s+)?(?:final\\s+)?String\\s+${name}\\s*=\\s*"([^"]*)"`);
+  const m = re.exec(src);
+  return m?.[1];
+}
+
+function resolveBoolConst(name: string, src: string): boolean | undefined {
+  const re = new RegExp(`(?:const\\s+)?(?:static\\s+)?(?:final\\s+)?boolean\\s+${name}\\s*=\\s*(true|false)`);
+  const m = re.exec(src);
+  return m ? m[1] === "true" : undefined;
+}
+
+function resolveArrayConst(name: string, src: string): string[] {
+  // arrayOf("a", "b") or new String[]{"a", "b"}
+  const re = new RegExp(
+    `(?:const\\s+)?(?:static\\s+)?(?:final\\s+)?(?:String\\[\\]|List<String>)\\s+${name}\\s*=\\s*(?:arrayOf\\(|listOf\\(|new\\s+String\\[\\]\\s*\\{)([\\s\\S]*?)[\\)\\}]`,
+  );
+  const m = re.exec(src);
+  if (!m) return [];
+  const body = m[1];
+  const out: string[] = [];
+  const sre = /"([^"]*)"/g;
+  let sm: RegExpExecArray | null;
+  while ((sm = sre.exec(body)) !== null) out.push(sm[1]);
+  return out;
+}
+
 function analyzeSettingsDecompiled(
   src: string,
   entryDomains: string[],
+  jadxOutDir?: string,
 ): SettingsAnalysis {
   const notes: string[] = [];
   const hasSetup =
@@ -748,7 +887,88 @@ function analyzeSettingsDecompiled(
   const base = analyzeSettings(src);
 
   // Parse the setupPreferenceScreen body with the decompiled-Java parser.
-  const body = extractMethodBody(src, "setupPreferenceScreen");
+  let body = extractMethodBody(src, "setupPreferenceScreen");
+  let effectiveSrc = src; // The source we parse for preference constants.
+
+  // Detect delegation: getSettings().setupPreferenceScreen(screen) or
+  // someHelper.setupPreferenceScreen(screen). If found, find the helper class
+  // and parse ITS setupPreferenceScreen + PREF_* constants instead.
+  if (body && /setupPreferenceScreen\s*\(\s*\w+\s*\)/.test(body.trim()) && body.trim().length < 200) {
+    // The body is just a delegation call. Extract the helper expression.
+    // Matches: getSettings().setupPreferenceScreen(...) or settings.setupPreferenceScreen(...)
+    const delegMatch = /(\w+)\s*\(\s*\)\s*\.\s*setupPreferenceScreen\s*\(/.exec(body)
+      || /(\w+)\s*\.\s*setupPreferenceScreen\s*\(/.exec(body);
+    if (delegMatch) {
+      const helperExpr = delegMatch[1]; // e.g. "getSettings" or "settings"
+      notes.push(`setupPreferenceScreen delegates to ${helperExpr}. Looking for helper class...`);
+
+      // Try to find the helper class name via several strategies.
+      let helperClassName: string | undefined;
+
+      // Strategy 1: Check the method return type: `private final AnikotoSettings getSettings()`
+      // Use a precise regex that requires the method modifier keywords before the type.
+      const getterMatch = new RegExp(
+        `(?:private|public|protected)\\s+(?:final\\s+)?(\\w+)\\s+${helperExpr}\\s*\\(\\s*\\)`,
+      ).exec(src);
+      if (getterMatch && getterMatch[1] !== "return" && getterMatch[1] !== "void") {
+        helperClassName = getterMatch[1];
+      }
+
+      // Strategy 2: Check the settings$delegate lambda: `return new AnikotoSettings(...)`
+      if (!helperClassName) {
+        // Try variations of the delegate lambda name.
+        for (const exprVariant of [helperExpr, helperExpr.replace("get", "").toLowerCase()]) {
+          const lambdaMatch = new RegExp(
+            `${exprVariant}_delegate\\$lambda\\$\\d+\\s*\\([^)]*\\)\\s*\\{\\s*return\\s+new\\s+(\\w+)`,
+          ).exec(src);
+          if (lambdaMatch) {
+            helperClassName = lambdaMatch[1];
+            break;
+          }
+        }
+      }
+
+      // Strategy 3: Field declaration: `private final AnikotoSettings settings;`
+      if (!helperClassName) {
+        const fieldMatch = new RegExp(
+          `(?:private|public|protected)\\s+(?:final\\s+)?(\\w+)\\s+${helperExpr}\\s*[;=]`,
+        ).exec(src);
+        if (fieldMatch && fieldMatch[1] !== "return" && fieldMatch[1] !== "void") {
+          helperClassName = fieldMatch[1];
+        }
+      }
+
+      if (helperClassName) {
+        notes.push(`Helper class type: ${helperClassName}`);
+      }
+
+      if (helperClassName && jadxOutDir) {
+        // Find the helper class file.
+        const helperFile = findClassFile(jadxOutDir, helperClassName);
+        if (helperFile) {
+          try {
+            effectiveSrc = readFileSync(helperFile, "utf8");
+            notes.push(`Found helper class: ${helperClassName} (${relative(process.cwd(), helperFile)})`);
+            // Parse the helper's setupPreferenceScreen.
+            const helperBody = extractMethodBody(effectiveSrc, "setupPreferenceScreen");
+            if (helperBody) {
+              body = helperBody;
+            }
+            // Also run the Kotlin-style analyzer on the helper class for PREF_* constants.
+            const helperBase = analyzeSettings(effectiveSrc);
+            // Merge: use helper's PREF_* constants as the base.
+            base.availableDomains.push(...helperBase.availableDomains);
+            base.fallbackBaseUrl = base.fallbackBaseUrl ?? helperBase.fallbackBaseUrl;
+          } catch {
+            notes.push(`Could not read helper class file: ${helperFile}`);
+          }
+        } else {
+          notes.push(`Helper class ${helperClassName} not found in decompiled sources.`);
+        }
+      }
+    }
+  }
+
   let prefs: {
     key: string;
     title: string;
@@ -759,7 +979,22 @@ function analyzeSettingsDecompiled(
     isDomain?: boolean;
   }[] = [];
   if (body) {
-    prefs = parsePreferenceScreen(body, src);
+    prefs = parsePreferenceScreen(body, effectiveSrc);
+  }
+
+  // If the decompiled parser found nothing, fall back to the Kotlin-style
+  // PREF_* constants from the effective source.
+  if (prefs.length === 0) {
+    const fallbackPrefs = scanConstantPrefs(effectiveSrc);
+    if (fallbackPrefs.length > 0) {
+      prefs = fallbackPrefs.map((p) => ({
+        ...p,
+        isDomain:
+          /^(pref_)?domain|base_?url|^domain$|preferred_domain/i.test(p.key) ||
+          /preferred domain|base\s*url/i.test(p.title),
+      }));
+      notes.push(`Used PREF_* constants fallback: found ${prefs.length} preference(s).`);
+    }
   }
 
   // Inject entryDomains into the domain preference (entries + entryValues + default)
@@ -800,6 +1035,27 @@ function analyzeSettingsDecompiled(
     if (p.defaultValue && /emptySet|SetsKt\.emptySet/.test(p.defaultValue)) {
       p.defaultValue = undefined; // will be treated as empty array
       continue;
+    }
+
+    // Handle boolean defaults: "bool" (local var from Boolean.TRUE), "Boolean.TRUE", etc.
+    if (p.type === "switch" && p.defaultValue) {
+      if (p.defaultValue === "Boolean.TRUE" || p.defaultValue === "true") {
+        p.defaultValue = "true";
+        continue;
+      }
+      if (p.defaultValue === "Boolean.FALSE" || p.defaultValue === "false") {
+        p.defaultValue = "false";
+        continue;
+      }
+      // "bool" from `Boolean bool = Boolean.TRUE;` — resolve from source.
+      if (p.defaultValue === "bool") {
+        const boolRe = /Boolean\s+bool\s*=\s*Boolean\.(TRUE|FALSE)/;
+        const bm = boolRe.exec(effectiveSrc);
+        if (bm) {
+          p.defaultValue = bm[1] === "TRUE" ? "true" : "false";
+          continue;
+        }
+      }
     }
 
     // Try to resolve single-letter static constants (e.g. V = strArr[0] = "1080")

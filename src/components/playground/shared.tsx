@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   AlertCircle,
   Inbox,
+  Copy,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,40 +25,133 @@ export type FetchInfo = {
   url: string;
   error?: string;
   blocked?: boolean;
+  needsCaptcha?: boolean;
 };
+
+/** Copy text to clipboard with toast feedback. */
+async function copyToClipboard(text: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    // Simple feedback — no toast import here to keep shared.tsx lean.
+    console.log(`[clipboard] Copied ${label}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Build a detailed error log string that the user can copy and share.
+ */
+function buildErrorLog(f: FetchInfo, title: string, warnings?: string[]): string {
+  const lines = [
+    `=== EXT-TO-JSON Playground Error Log ===`,
+    `Time: ${new Date().toISOString()}`,
+    `Title: ${title}`,
+    ``,
+    `--- Request ---`,
+    `URL: ${f.url}`,
+    `HTTP Status: ${f.status}`,
+    `OK: ${f.ok}`,
+    `Blocked: ${f.blocked ?? false}`,
+    `Needs Captcha: ${f.needsCaptcha ?? false}`,
+    ``,
+    `--- Error ---`,
+    f.error || `(no error message)`,
+  ];
+  if (warnings && warnings.length > 0) {
+    lines.push(``, `--- Warnings ---`);
+    warnings.forEach((w, i) => lines.push(`[${i + 1}] ${w}`));
+  }
+  lines.push(``, `=== End of log ===`);
+  return lines.join("\n");
+}
 
 /** Rose alert for a failed request. Renders nothing when fetch.ok is true. */
 export function FetchAlert({
   fetch: f,
   title = "Request failed",
+  warnings,
 }: {
   fetch: FetchInfo;
   title?: string;
+  warnings?: string[];
 }) {
+  const [copied, setCopied] = React.useState(false);
   if (f.ok) return null;
   const isBlocked = f.blocked || f.status === 403;
   const is404 = f.status === 404;
+  const isNetwork = f.status === 0;
   const alertTitle = isBlocked
     ? "Site blocked the request"
     : is404
       ? "Page not found (404)"
-      : title;
+      : isNetwork
+        ? "Network error"
+        : title;
+
+  const logText = buildErrorLog(f, alertTitle, warnings);
+
   return (
     <Alert
       variant="destructive"
       className="rounded-2xl border-[var(--accent-danger)]/40 bg-[var(--accent-danger-soft)] text-[var(--accent-danger)] [&>svg]:text-[var(--accent-danger)]"
     >
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>{alertTitle}</AlertTitle>
+      <AlertTitle className="flex items-center justify-between gap-2">
+        <span>{alertTitle}</span>
+        <button
+          onClick={() => {
+            copyToClipboard(logText, "error log").then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+          className="inline-flex items-center gap-1 rounded-lg border border-[var(--accent-danger)]/30 px-2 py-0.5 text-[11px] font-medium transition-colors hover:bg-[var(--accent-danger)]/10"
+          title="Copy error details to share for debugging"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3 w-3" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" /> Copy log
+            </>
+          )}
+        </button>
+      </AlertTitle>
       <AlertDescription className="text-[var(--accent-danger)]/90">
         <div className="break-words">{f.error || `HTTP ${f.status}`}</div>
-        <div className="mt-1 break-all text-[11px] opacity-80">URL: {f.url}</div>
+        <div className="mt-1 break-all text-[11px] opacity-80">
+          URL: <code className="font-mono">{f.url}</code>
+        </div>
+        <div className="mt-0.5 text-[11px] opacity-80">
+          Status: <code className="font-mono">{f.status || "N/A"}</code>
+        </div>
         {isBlocked && (
           <div className="mt-2 text-[11px] opacity-90">
             💡 Try: open the extension Settings (top-right) and pick a different
             domain, or visit the site in your browser first to pass any
             Cloudflare challenge.
           </div>
+        )}
+        {isNetwork && (
+          <div className="mt-2 text-[11px] opacity-90">
+            💡 This usually means the browser-fetch service (port 3030) is not
+            running. Restart the dev server with <code className="font-mono">bun run dev</code>.
+          </div>
+        )}
+        {warnings && warnings.length > 0 && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-[11px] opacity-80">
+              {warnings.length} warning(s)
+            </summary>
+            <div className="mt-1 space-y-0.5 text-[11px] opacity-80">
+              {warnings.map((w, i) => (
+                <div key={i}>{w}</div>
+              ))}
+            </div>
+          </details>
         )}
       </AlertDescription>
     </Alert>
