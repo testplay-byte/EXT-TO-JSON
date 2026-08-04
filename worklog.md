@@ -349,3 +349,23 @@ VERIFIED END-TO-END:
 
 Stage Summary:
 - The playground now fetches pages through a real Chromium browser, bypassing Cloudflare. Cookies persist across restarts. When a captcha is needed, a visible browser opens for the user to solve. Everything starts with a single `bun run dev` or START.bat double-click.
+
+---
+Task ID: 21
+Agent: main (orchestrator)
+Task: Fix EPERM on Windows + URL template garbage + settings resolution.
+
+Work Log:
+- CRITICAL: Fixed EPERM 'operation not permitted, mkdir C:' on Windows. Root cause: PROFILE_DIR used `new URL(...).pathname` which returns '/C:/Users/...' (with leading slash) on Windows. Playwright interpreted this as a relative path from root. Fix: use `fileURLToPath(import.meta.url)` + `dirname` + `join` instead. Also added mkdirSync + --disable-dev-shm-usage + try/catch with helpful error messages.
+- Fixed URL template garbage (page={i, getHeaders(), (CacheControl) null, 4, (Object) null);}). Root cause: addQueryParameter regex `([^)]+)` couldn't handle nested parens in `String.valueOf(i)`. Fix: only capture the parameter NAME (up to the comma), not the value. Map by name: 'page' -> {page}, 'keyword' -> {query}.
+- Fixed settings detection:
+  - resolveSetArrayCall: handles casts (CharSequence[]), static constant refs (S, U, W, X), local variable refs (strArr = S)
+  - resolveStaticArray: resolves static final String[] constants
+  - resolveStaticConstantDefault: resolves V = strArr[0] = "1080" patterns
+  - isDomain detection: precise — 'hoster_exclusion' no longer matches as domain pref (was matching on 'host')
+  - Domain preference default: uses first entry domain URL instead of truncated 'https://'
+  - Cleanup: SetsKt.emptySet() -> undefined; this.X refs -> first entry value
+- VERIFIED with real Anikoto APK: 100% health, 8 preferences with correct defaults + entries, browse popular returns 30 real items, Cloudflare bypassed. Lint clean. Pushed to GitHub (5ed9c11).
+
+Stage Summary:
+- Windows EPERM fixed. URL templates are clean. Settings are properly detected with correct defaults, entries, and domain flags. All pushed to GitHub.
