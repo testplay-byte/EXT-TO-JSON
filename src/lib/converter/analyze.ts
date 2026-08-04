@@ -444,7 +444,10 @@ function buildUrlTemplate(
         const low = expr.toLowerCase();
         if (low.includes("page") || low === "i" || low === "p") {
           built += "{page}";
-        } else if (low.includes("query") || low.includes("search") || low.includes("str")) {
+        } else if (
+          low.includes("query") || low.includes("search") || low.includes("str") ||
+          low.includes("urlencode") || low.includes("encode")
+        ) {
           built += "{query}";
         } else if (low.includes("url")) {
           built += "{animeUrl}";
@@ -466,6 +469,19 @@ function buildUrlTemplate(
   }
   // If it contains getBaseUrl() reference, normalize to {baseUrl}.
   built = built.replace(/getBaseUrl\(\)/g, "{baseUrl}");
+
+  // Clean up: remove duplicate {query} placeholders (from URLEncoder.encode + filter exprs).
+  // Pattern: keyword={query}&{query}  ->  keyword={query}
+  built = built.replace(/(\{query\})&\{query\}/g, "$1");
+  // Clean up: remove &{unknown} placeholders that are filter params we can't resolve.
+  // Pattern: &{someVar}&page=  ->  &page=
+  built = built.replace(/&\{[^}]+\}&(?=page=)/g, "&");
+  // Clean up: remove any remaining &{unknown} at the end or before &.
+  built = built.replace(/&\{[^}]+\}/g, "");
+  // Clean up: remove double && from the cleanup above.
+  built = built.replace(/&&/g, "&");
+  // Clean up: remove trailing & if present.
+  built = built.replace(/&$/g, "");
 
   return { template: built, literals };
 }
@@ -704,6 +720,53 @@ export function analyzeSource(
   }
   fromElementSelectors["animeDetailsParse"] = detailsParseSelectors;
 
+  // ---- AnimeHttpSource: extract selectors from parse methods ----
+  // When the source extends AnimeHttpSource (not ParsedAnimeHttpSource), there
+  // are no *Selector() or *FromElement() methods. Instead, selectors are used
+  // directly in the parse methods. Extract them so the playground can work.
+  if (Object.keys(selectors).length === 0) {
+    // Browse: extract from parseFilterResults / popularAnimeParse / searchAnimeParse
+    for (const parseMethod of ["parseFilterResults", "popularAnimeParse", "searchAnimeParse"]) {
+      const parseBody = extractMethodBody(src, parseMethod);
+      if (parseBody) {
+        const parseSels = extractJsoupSelectors(parseBody);
+        if (parseSels.length > 0) {
+          // First .select("...") is the item selector
+          selectors["popularAnimeSelector"] = parseSels[0];
+          selectors["searchAnimeSelector"] = parseSels[0];
+          // Next page selector: look for a.page-link[rel=next] or similar
+          const nextSel = parseSels.find((s) => /next|page-link/i.test(s));
+          if (nextSel) {
+            selectors["popularAnimeNextPageSelector"] = nextSel;
+            selectors["searchAnimeNextPageSelector"] = nextSel;
+          }
+          notes.push(`Extracted browse selectors from ${parseMethod}: item=${parseSels[0]}`);
+          break;
+        }
+      }
+    }
+    // Browse item fields: extract from parseSearchItem
+    const searchItemBody = extractMethodBody(src, "parseSearchItem");
+    if (searchItemBody) {
+      const itemSels = extractJsoupSelectors(searchItemBody);
+      fromElementSelectors["popularAnimeFromElement"] = itemSels;
+      fromElementSelectors["searchAnimeFromElement"] = itemSels;
+      notes.push(`Extracted browse item field selectors from parseSearchItem: ${itemSels.length} selectors`);
+    }
+    // Episode selectors: extract from episodeListParse
+    const epBody = extractMethodBody(src, "episodeListParse");
+    if (epBody) {
+      const epSels = extractJsoupSelectors(epBody);
+      // First .select("...") is the episode item selector
+      const itemSel = epSels.find((s) => s.startsWith("a[") || s.startsWith("div") || s.startsWith("li"));
+      if (itemSel) {
+        selectors["episodeListSelector"] = itemSel;
+      }
+      fromElementSelectors["episodeFromElement"] = epSels;
+      notes.push(`Extracted episode selectors from episodeListParse: ${epSels.length} selectors`);
+    }
+  }
+
   // Filters
   const filterBody = methodOverrides.includes("getFilterList" as never)
     ? extractMethodBody(src, "getFilterList")
@@ -791,12 +854,16 @@ function resolveStaticConstantDefault(
 /**
  * Find a Java class file by simple name in the jadx output tree.
  * Searches recursively for `<className>.java`.
+ * Handles both forward-slash (Unix) and backslash (Windows) paths.
  */
 function findClassFile(jadxOutDir: string, className: string): string | null {
   const simpleName = className.split(".").pop() ?? className;
-  const results = collectJavaFiles(jadxOutDir).filter((f) =>
-    f.split("/").pop()?.replace(/\.java$/, "") === simpleName,
-  );
+  const results = collectJavaFiles(jadxOutDir).filter((f) => {
+    // Handle both / and \ path separators (Windows uses \).
+    const parts = f.replace(/\\/g, "/").split("/");
+    const base = parts.pop()?.replace(/\.java$/, "");
+    return base === simpleName;
+  });
   return results[0] ?? null;
 }
 

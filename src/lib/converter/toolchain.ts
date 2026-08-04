@@ -76,9 +76,11 @@ export function resolveToolchain(): ToolchainPaths {
     );
   }
 
-  const javaBin = process.env.JAVA_HOME
-    ? join(process.env.JAVA_HOME, "bin", IS_WIN ? "java.exe" : "java")
-    : "java";
+  // Use 'java' from the system PATH. Do NOT use JAVA_HOME because on Windows
+  // the path often contains spaces (e.g. "C:\Program Files\Microsoft\jdk-...")
+  // which breaks execFile — Java interprets "Files\Microsoft\..." as a class
+  // name. The jadx.bat launcher already uses 'java' from PATH and works.
+  const javaBin = "java";
 
   return { apktoolJar, jadxBin: jadxBinResolved, javaBin, jadxBinIsBat: useBat };
 }

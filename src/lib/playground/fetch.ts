@@ -52,7 +52,7 @@ export async function fetchPage(
   url: string,
   _source?: unknown,
   _extraHeaders?: Record<string, string>,
-  timeoutMs = 30000,
+  timeoutMs = 60000,
 ): Promise<FetchResult> {
   if (!url || !/^https?:\/\//.test(url)) {
     return {

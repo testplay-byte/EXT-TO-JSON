@@ -1,0 +1,600 @@
+{
+  "schemaVersion": "1.0.0",
+  "converter": {
+    "version": "1.0.0",
+    "convertedAt": "2026-08-04T13:38:54.003Z",
+    "durationMs": 5837,
+    "toolchain": {
+      "apktool": "2.9.3",
+      "jadx": "1.4.7",
+      "java": "openjdk version 21.0.11 2026-04-21"
+    },
+    "inputFile": "anikoto-v16.9.apk",
+    "inputSha256": "a06dd2d58e421604d3212ca1735089a8ccbe3e5f4ac9d3fb757cbb64325d297e"
+  },
+  "meta": {
+    "name": "AniKoto 180",
+    "lang": "en",
+    "baseUrl": "https://anikototv.to",
+    "versionId": 11,
+    "isNsfw": false,
+    "packageName": "eu.kanade.tachiyomi.animeextension.en.anikoto180",
+    "apkVersionCode": 0,
+    "apkVersionName": "",
+    "sourceClassName": "Anikoto",
+    "sourceType": "AnimeHttpSource"
+  },
+  "health": {
+    "score": 92,
+    "status": "warning",
+    "summary": "Conversion incomplete — 92% complete. 1 warning(s), 0 error(s).",
+    "checks": [
+      {
+        "id": "manifest",
+        "label": "AndroidManifest parsed",
+        "status": "pass",
+        "detail": "Package name, version code/name and meta-data extracted."
+      },
+      {
+        "id": "source-class",
+        "label": "Source class located",
+        "status": "pass",
+        "detail": "Anikoto extends AnimeHttpSource."
+      },
+      {
+        "id": "base-url",
+        "label": "Base URL extracted",
+        "status": "pass",
+        "detail": "https://anikototv.to"
+      },
+      {
+        "id": "language",
+        "label": "Language extracted",
+        "status": "pass",
+        "detail": "en"
+      },
+      {
+        "id": "name",
+        "label": "Display name extracted",
+        "status": "pass",
+        "detail": "AniKoto 180"
+      },
+      {
+        "id": "method-overrides",
+        "label": "Method overrides detected",
+        "status": "pass",
+        "detail": "11 overridden methods detected."
+      },
+      {
+        "id": "browse-popular",
+        "label": "Popular endpoint",
+        "status": "pass",
+        "detail": "popularAnimeRequest + popularAnimeSelector present."
+      },
+      {
+        "id": "browse-search",
+        "label": "Search endpoint",
+        "status": "pass",
+        "detail": "searchAnimeRequest present."
+      },
+      {
+        "id": "details",
+        "label": "Anime details parsing",
+        "status": "pass",
+        "detail": "animeDetailsParse / FromElement present."
+      },
+      {
+        "id": "episodes",
+        "label": "Episode list parsing",
+        "status": "pass",
+        "detail": "episodeListParse present."
+      },
+      {
+        "id": "videos",
+        "label": "Video extraction",
+        "status": "pass",
+        "detail": "videoListParse / videoUrlParse present."
+      },
+      {
+        "id": "servers",
+        "label": "Video servers detected",
+        "status": "fail",
+        "detail": "No known video server names detected in source string literals."
+      },
+      {
+        "id": "filters",
+        "label": "Filter list",
+        "status": "skip",
+        "detail": "No filters."
+      }
+    ],
+    "warnings": [
+      "Video servers detected: No known video server names detected in source string literals."
+    ],
+    "errors": []
+  },
+  "capabilities": {
+    "sourceKind": "anime",
+    "supportsLatest": true,
+    "supportsSearch": true,
+    "supportsFilters": false,
+    "supportsEpisodes": true,
+    "supportsVideos": true,
+    "supportsSubtitles": false,
+    "supportsAudioTracks": false
+  },
+  "source": {
+    "baseUrl": "https://anikototv.to",
+    "lang": "en",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Referer": "https://anikototv.to/"
+    },
+    "rateLimitPerSecond": 0
+  },
+  "browse": {
+    "popular": {
+      "method": "GET",
+      "url": "{baseUrl}/most-viewed?page={page}",
+      "headers": {},
+      "parse": {
+        "itemSelector": "div#list-items > div.item",
+        "title": "a.name.d-title",
+        "url": "a[href*=/watch/]",
+        "thumbnail": ".name",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": true
+    },
+    "latest": {
+      "method": "GET",
+      "url": "{baseUrl}/latest-updated?page={page}",
+      "headers": {},
+      "parse": {
+        "itemSelector": "",
+        "title": "",
+        "url": "a",
+        "thumbnail": "img",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": false
+    },
+    "search": {
+      "method": "GET",
+      "url": "{baseUrl}/filter?keyword={query}&page={page}",
+      "headers": {},
+      "parse": {
+        "itemSelector": "div#list-items > div.item",
+        "title": "a.name.d-title",
+        "url": "a[href*=/watch/]",
+        "thumbnail": ".name",
+        "urlResolution": "href",
+        "thumbnailAttr": "src",
+        "extras": {}
+      },
+      "paginated": true
+    }
+  },
+  "filters": [],
+  "details": {
+    "title": "h1.title",
+    "description": "div.synopsis div.content",
+    "thumbnail": "div.poster img",
+    "author": "",
+    "artist": "div:contains(Studios) span a",
+    "genre": "div:contains(Genres) span a",
+    "status": "",
+    "statusMapping": {
+      "ongoing": [
+        "ongoing",
+        "ongoing?",
+        "emission",
+        "en cours",
+        "ongoing anime"
+      ],
+      "completed": [
+        "completed",
+        "finish",
+        "termine",
+        "completed anime"
+      ],
+      "canceled": [
+        "canceled",
+        "cancelled"
+      ],
+      "onHiatus": [
+        "hiatus",
+        "on hold"
+      ]
+    },
+    "extras": {}
+  },
+  "episodes": {
+    "method": "GET",
+    "url": "{animeUrl}",
+    "headers": {},
+    "parse": {
+      "itemSelector": "a[data-ids]",
+      "number": "a[data-ids]",
+      "name": "span.d-title",
+      "url": "a",
+      "scanlator": "",
+      "date": "",
+      "numberExtraction": "regex",
+      "numberRegex": "(\\d+(?:\\.\\d+)?)"
+    }
+  },
+  "videos": {
+    "method": "GET",
+    "url": "{episodeUrl}",
+    "headers": {},
+    "servers": [],
+    "resolutions": [],
+    "formats": [
+      "mp4",
+      "m3u8"
+    ],
+    "extractorStrategy": "none",
+    "detectedExtractors": []
+  },
+  "subtitles": {
+    "supported": false,
+    "source": "none",
+    "formats": [],
+    "note": "No subtitle references detected."
+  },
+  "audio": {
+    "supported": false,
+    "source": "video-track",
+    "tracks": [],
+    "note": "Audio track references detected; playground will surface any Video.audioTracks."
+  },
+  "settings": {
+    "configurable": true,
+    "preferences": [
+      {
+        "key": "(category:Playback)",
+        "title": "Playback",
+        "type": "category",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_quality",
+        "title": "Preferred quality",
+        "type": "list",
+        "entries": [
+          "1080p",
+          "720p",
+          "480p",
+          "360p"
+        ],
+        "entryValues": [
+          "1080",
+          "720",
+          "480",
+          "360"
+        ],
+        "default": "720",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_audio",
+        "title": "Preferred audio",
+        "type": "list",
+        "entries": [
+          "Sub",
+          "Dub",
+          "Hardsub"
+        ],
+        "entryValues": [
+          "SUB",
+          "A-DUB",
+          "H-SUB"
+        ],
+        "default": "SUB",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_buffer",
+        "title": "Pre-fetch buffer",
+        "type": "list",
+        "entries": [
+          "10%",
+          "20%",
+          "30%",
+          "50%",
+          "100%"
+        ],
+        "entryValues": [
+          "10",
+          "20",
+          "30",
+          "50",
+          "100"
+        ],
+        "default": "10",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_server",
+        "title": "Preferred server",
+        "type": "list",
+        "entries": [
+          "Auto",
+          "VidPlay-1",
+          "HD-1",
+          "Vidstream-2",
+          "VidCloud-1",
+          "Kiwi-Stream"
+        ],
+        "entryValues": [
+          "auto",
+          "VidPlay-1",
+          "HD-1",
+          "Vidstream-2",
+          "VidCloud-1",
+          "Kiwi-Stream"
+        ],
+        "default": "auto",
+        "isDomainPreference": false
+      },
+      {
+        "key": "(category:Servers)",
+        "title": "Servers",
+        "type": "category",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_enable_kiwi",
+        "title": "Enable Kiwi-Stream",
+        "type": "switch",
+        "default": "true",
+        "isDomainPreference": false
+      },
+      {
+        "key": "(category:Episode metadata)",
+        "title": "Episode metadata",
+        "type": "category",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_load_thumbnails",
+        "title": "Load episode thumbnails",
+        "type": "switch",
+        "default": "true",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_load_titles",
+        "title": "Load episode titles",
+        "type": "switch",
+        "default": "true",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_load_descriptions",
+        "title": "Load episode descriptions",
+        "type": "switch",
+        "default": "true",
+        "isDomainPreference": false
+      },
+      {
+        "key": "(category:Smart Search)",
+        "title": "Smart Search",
+        "type": "category",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_smart_search",
+        "title": "Enable smart search",
+        "type": "switch",
+        "default": "false",
+        "isDomainPreference": false
+      },
+      {
+        "key": "pref_smart_search_phrase",
+        "title": "Activation phrase",
+        "type": "text",
+        "default": "?",
+        "isDomainPreference": false
+      }
+    ],
+    "domainPreferenceKeys": [],
+    "availableDomains": [
+      "https://anikototv.to",
+      "https://megaplay.buzz/",
+      "https://vidtube.site/"
+    ]
+  },
+  "rawAnalysis": {
+    "decompiledPath": "work/job-1785850728166/jadx-out",
+    "sourceClassFile": "work/job-1785850728166/jadx-out/sources/eu/kanade/tachiyomi/animeextension/en/anikoto/Anikoto.java",
+    "candidateClasses": [
+      "Anikoto"
+    ],
+    "methodOverrides": [
+      "popularAnimeRequest",
+      "popularAnimeParse",
+      "latestUpdatesRequest",
+      "latestUpdatesParse",
+      "searchAnimeRequest",
+      "searchAnimeParse",
+      "animeDetailsParse",
+      "episodeListParse",
+      "videoListParse",
+      "getFilterList",
+      "getVideoList"
+    ],
+    "stringLiterals": [
+      {
+        "method": "popularAnimeRequest",
+        "values": [
+          "/most-viewed?page="
+        ]
+      },
+      {
+        "method": "popularAnimeParse",
+        "values": [
+          "response"
+        ]
+      },
+      {
+        "method": "latestUpdatesRequest",
+        "values": [
+          "/latest-updated?page="
+        ]
+      },
+      {
+        "method": "latestUpdatesParse",
+        "values": [
+          "response"
+        ]
+      },
+      {
+        "method": "searchAnimeRequest",
+        "values": [
+          "query",
+          "filters",
+          "UTF-8",
+          "/filter?keyword=",
+          "&",
+          "&page="
+        ]
+      },
+      {
+        "method": "searchAnimeParse",
+        "values": [
+          "response"
+        ]
+      },
+      {
+        "method": "animeDetailsParse",
+        "values": [
+          "response",
+          "#w-info .binfo",
+          "div.binfo",
+          "/watch/",
+          "/ep-",
+          "h1.title",
+          "",
+          "",
+          "",
+          "div.poster img",
+          "abs:src",
+          "div.names",
+          "div.synopsis div.content",
+          "div.bmeta",
+          "div.meta > div",
+          "ownText(...)",
+          ":",
+          "span",
+          "text(...)",
+          "Type",
+          "",
+          "Premiered",
+          "",
+          "Aired",
+          "",
+          "Status",
+          "",
+          "div:contains(Genres) span a",
+          ", ",
+          "",
+          "",
+          "MAL",
+          "",
+          "Duration",
+          "",
+          "div:contains(Studios) span a",
+          ", ",
+          "",
+          "",
+          "i.rating",
+          "\\n\\nMAL Score: ",
+          "\\nType: ",
+          "\\nPremiered: ",
+          "\\nAired: ",
+          "\\nDuration: ",
+          "\\nStudio: ",
+          "\\nRating: ",
+          "\\n\\nAlt titles: ",
+          "\\n\\nThank the Confused_creature_180",
+          "Currently Airing",
+          "Finished Airing"
+        ]
+      },
+      {
+        "method": "episodeListParse",
+        "values": [
+          "parse(...)",
+          "a[data-ids]",
+          "select(...)",
+          "data-num",
+          "attr(...)",
+          "data-mal",
+          "attr(...)",
+          "data-timestamp",
+          "attr(...)",
+          "data-ids",
+          "attr(...)",
+          "data-sub",
+          "1",
+          "data-dub",
+          "1",
+          "span.d-title",
+          "title",
+          "Episode ",
+          "Sub / Dub",
+          "Sub",
+          "Dub",
+          "Raw"
+        ]
+      },
+      {
+        "method": "videoListParse",
+        "values": [
+          "response",
+          "hoster"
+        ]
+      },
+      {
+        "method": "getVideoList",
+        "values": [
+          "call to 'resume' before 'invoke' with coroutine",
+          "getVideoList(episode) [legacy]: failed — "
+        ]
+      }
+    ],
+    "manifestDump": {
+      "packageName": "eu.kanade.tachiyomi.animeextension.en.anikoto180",
+      "versionCode": 0,
+      "versionName": "",
+      "metaDataKeys": [
+        "tachiyomi.animeextension.class",
+        "tachiyomi.animeextension.nsfw",
+        "tachiyomi.animeextension.versionId"
+      ]
+    },
+    "resourceStrings": {},
+    "analyzerNotes": [
+      "Scanned 71 .java files from jadx output.",
+      "Found 1 candidate source class(es): Anikoto (AnimeHttpSource, score=14)",
+      "Selected source class via manifest hint: Anikoto",
+      "Found entry subclass: Anikoto",
+      "setupPreferenceScreen delegates to getSettings. Looking for helper class...",
+      "Helper class type: AnikotoSettings",
+      "Found helper class: AnikotoSettings (work/job-1785850728166/jadx-out/sources/eu/kanade/tachiyomi/animeextension/en/anikoto/AnikotoSettings.java)",
+      "Decompiled preference parser found 14 preference(s).",
+      "Fallback base URL: https://anikototv.to",
+      "Detected 11 overridden methods.",
+      "Extracted browse selectors from parseFilterResults: item=div#list-items > div.item",
+      "Extracted browse item field selectors from parseSearchItem: 6 selectors",
+      "Extracted episode selectors from episodeListParse: 2 selectors",
+      "Extracted 5 selectors, 3 request URLs, 0 filters, 0 extractors."
+    ]
+  }
+}

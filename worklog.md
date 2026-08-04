@@ -395,3 +395,27 @@ Work Log:
 
 Stage Summary:
 - Both APK architectures now handled. Settings fully extracted from both inline + helper-class patterns. URL templates clean. Copy-logs feature added for debugging.
+
+---
+Task ID: 23
+Agent: main (orchestrator)
+Task: Fix Java path spaces + AnimeHttpSource selector extraction + findClassFile Windows fix + search URL cleanup + pre-built JSON.
+
+Work Log:
+- FIXED Java path with spaces: removed JAVA_HOME resolution, now uses 'java' from system PATH (like jadx.bat does). This was causing apktool to fail on Windows when Java was installed in "C:\Program Files\...".
+- FIXED findClassFile for Windows: path separators now handle both / and \ (was only splitting on /, missing files on Windows).
+- FIXED selector extraction for AnimeHttpSource: v16.9 extends AnimeHttpSource (not ParsedAnimeHttpSource), so it has NO *Selector() methods. Added extraction from parse methods:
+  - parseFilterResults → browse itemSelector (div#list-items > div.item)
+  - parseSearchItem → browse title/url/thumbnail selectors (a.name.d-title, etc.)
+  - episodeListParse → episode itemSelector (a[data-ids]) + field selectors
+- FIXED search URL: URLEncoder.encode(str, "UTF-8") now maps to {query} (was {encode}). Added URL cleanup to remove duplicate {query} and unresolved filter param placeholders.
+- Increased playground timeout from 30s to 60s.
+- Generated pre-built JSON files for both APKs in converted/ folder so the user can import directly.
+- VERIFIED:
+  - v14.1: 100% health, 8 prefs, popular.url={baseUrl}/most-viewed?page={page}, itemSelector=div.ani.items > div.item
+  - v16.9: 92% health, 14 prefs, popular.url={baseUrl}/most-viewed?page={page}, itemSelector=div#list-items > div.item, episodes.itemSelector=a[data-ids], search.url={baseUrl}/filter?keyword={query}&page={page}
+  - Both: clean URLs, correct selectors, correct settings with defaults + entries
+- Lint clean. Pushed to GitHub.
+
+Stage Summary:
+- All five user-reported issues fixed: Java path, selectors, settings, search URL, timeout. Pre-built JSONs included in repo for direct import.
